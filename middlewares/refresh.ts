@@ -20,7 +20,6 @@ export const refreshToken = (req: Request, res: Response, next: NextFunction) =>
                 return;
             }
     
-            // Puedes guardar el usuario en req para usarlo después
             (req as any).user = decoded;
             next();
         } catch (e) {

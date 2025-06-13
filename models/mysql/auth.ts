@@ -26,7 +26,7 @@ export class AuthModel implements IAuthModel{
 
   async createUser(user: UserInput): Promise<UserOutput | boolean> {
     try {
-      const roleId = await this.getOrCreateRoleId(Role.ADMIN);
+      const roleId = await this.getOrCreateRoleId(user.role);
       const [uuidRows] = await connection.query('SELECT UUID() uuid;');
       const uuid = (uuidRows as any)[0].uuid;
       const hashedPassword = await hash(user.password, config.salt);

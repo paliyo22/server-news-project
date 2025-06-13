@@ -3,19 +3,14 @@ import { connection } from '../db/mysql';
 
 type NewsItem = {
   category: string;
-  // id: number; // descartado
   imageUrl?: string;
-  // key: string; // descartado
-  // likes: number; // eliminado
   publisher: string;
   snippet: string;
-  timestamp: string; // formato unix en milisegundos (string numérica)
+  timestamp: string; 
   title: string;
   url: string;
-  // visible: boolean; // descartado
 };
 
-// Mapeo de categorías a valores numéricos
 const categoryToGenre: Record<string, number> = {
   entertainment: 1,
   world: 2,
@@ -26,7 +21,6 @@ const categoryToGenre: Record<string, number> = {
   technology: 7
 };
 
-// Función que obtiene noticias desde una API externa
 const fetchNewsFromAPI = async (): Promise<NewsItem[]> => {
   try {
     const response = await axios.get('https://news-f8836-default-rtdb.firebaseio.com/news/.json');
@@ -38,7 +32,7 @@ const fetchNewsFromAPI = async (): Promise<NewsItem[]> => {
   }
 };
 
-// Función que guarda las noticias en la base de datos
+
 const saveNews = async (news: NewsItem[]) => {
   try {
     for (const i of news) {
@@ -50,18 +44,17 @@ const saveNews = async (news: NewsItem[]) => {
             subnews, has_subnews, news_url, publisher, news_genre
           ) VALUES (FROM_UNIXTIME(?), ?, ?, ?, null, null, false, ?, ?, ?);`,
           [
-            Math.floor(Number(i.timestamp) / 1000), // created
+            Math.floor(Number(i.timestamp) / 1000), 
             i.title,
             i.snippet,
-            i.imageUrl || null, // thumbnail
-            i.url,              // news_url
+            i.imageUrl || null, 
+            i.url,              
             i.publisher,
-            genre               // news_genre (numérico)
+            genre               
           ]
         );
       } catch (e: any) {
         if (e.code === 'ER_DUP_ENTRY') {
-          // Si el news_url ya existe, ignora e inserta la siguiente
           continue;
         } else {
           throw e;
@@ -74,7 +67,7 @@ const saveNews = async (news: NewsItem[]) => {
   }
 };
 
-// Función principal que orquesta todo
+
 const run = async () => {
   try {
     const news = await fetchNewsFromAPI();
@@ -82,7 +75,7 @@ const run = async () => {
   } catch (e) {
     console.error('❌ Error en el proceso de pull y guardado:', e);
   } finally {
-    connection.end(); // cerrar conexión al finalizar
+    connection.end();
   }
 };
 

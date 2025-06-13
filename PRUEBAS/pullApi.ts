@@ -9,8 +9,8 @@ const fetchNewsFromApi = async (category: Category): Promise<void> =>{
             `https://google-news13.p.rapidapi.com/${category}?lr=es-AR`,
             {
                 headers:{
-                    'x-rapidapi-key': 'fe5cee5d5emsheb3dd67a6c86484p1151d6jsnb08f71df05a7',
-                    'x-rapidapi-host': 'google-news13.p.rapidapi.com'
+                    //'x-rapidapi-key': 
+                    //'x-rapidapi-host': 
                 }
             }
         );

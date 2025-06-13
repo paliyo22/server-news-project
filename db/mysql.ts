@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise'
 import config from '../config';
 
-const DEFAULT_CONFIG={ //esto se manda a config despues
+const DEFAULT_CONFIG={
     host: config.DBHost,
     user: config.DBUser,
     port: config.DBPort,

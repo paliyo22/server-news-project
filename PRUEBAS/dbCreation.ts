@@ -130,7 +130,7 @@ const LocalConnection = await mysql.createConnection(DEFAULT_CONFIG);
 
 async function transferData(): Promise<void> {
   try {
-    // 1. Leer todos los registros de la base local
+
     const [rows] = await LocalConnection.query(`SELECT * FROM news;`) as [any[], any];
 
     if (!rows.length) {
@@ -140,7 +140,7 @@ async function transferData(): Promise<void> {
 
     console.log(`Migrando ${rows.length} registros...`);
 
-    // 2. Preparar la query de inserción (evita problemas con columnas)
+
     const insertQuery = `
       INSERT INTO news (
         id, created, title, snippet, thumbnail, thumbnail_proxied,
@@ -148,7 +148,7 @@ async function transferData(): Promise<void> {
         is_active, news_genre
       ) VALUES ?`;
 
-    // 3. Mapear los datos a un array de arrays
+
     const values = rows.map(row => [
       row.id,
       row.created,
@@ -165,7 +165,7 @@ async function transferData(): Promise<void> {
       row.news_genre,
     ]);
 
-    // 4. Insertar todos los registros en lote
+
     const [result] = await connection.query(insertQuery, [values]) as [ResultSetHeader, any];
 
     console.log(`✅ Migración completada: ${result.affectedRows} registros insertados.`);

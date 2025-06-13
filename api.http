@@ -12,7 +12,7 @@ GET http://localhost:1234/auth/register
 Content-Type: application/json
 
 ###
-GET http://localhost:1234/news/featured
+GET http://localhost:1234/news/category/world
 Content-Type: application/json
 
 ###

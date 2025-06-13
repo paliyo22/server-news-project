@@ -12,7 +12,7 @@ import type { ResultSetHeader } from "mysql2";
 
 const saveUrls = async (): Promise<void> => {
     try {
-        // Trae todas las noticias con thumbnail no nulo
+        
         const [rows] = await connection.query(
             `SELECT * FROM news WHERE thumbnail IS NOT NULL ORDER BY created DESC LIMIT 600 ;`
         ) as [any[], any];
@@ -37,13 +37,13 @@ const saveUrls = async (): Promise<void> => {
                     continue;
                 }
 
-                // Obtiene la URL final después de redirecciones
+                
                 const finalUrl =
                     response?.request?._redirectable?._currentUrl && typeof response.request._redirectable._currentUrl === "string"
                         ? response.request._redirectable._currentUrl
                         : null;
 
-                // Actualiza image_url solo si se obtuvo una URL final
+                
                 if (finalUrl && finalUrl.trim() !== "") {
                     try {
                         const [save] = await connection.query(

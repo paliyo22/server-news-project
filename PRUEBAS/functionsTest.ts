@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { connection } from "../db/mysql";
 import { AuthModel, UserModel } from "../models/mysql";
 
-// Mock Request y Response para pruebas
+
 const mockRequest = (params = {}, query = {}, body = {}, user= {}) => ({
     params,
     query,
@@ -23,7 +23,6 @@ const mockResponse = (): Response => {
             console.log("Respuesta JSON:", JSON.stringify(data, null, 2));
             return this;
         },
-        // Add any other methods used by your controller as needed
     } as Response;
     return res;
 };
@@ -31,7 +30,6 @@ const mockResponse = (): Response => {
 const run = async () => {
     try {
         const aux = new UserController(new UserModel(), new AuthModel());
-        // Simula una petición con query params
         await aux.update(
             mockRequest({}, {}, 
                 {"password": "securePassword123"}, 
@@ -41,7 +39,6 @@ const run = async () => {
     } catch (e) {
         console.error("Error: NO FUNCA BIEN");
     }finally {
-        // Cierra la conexión para terminar el proceso
         await connection.end();
     }
 };
