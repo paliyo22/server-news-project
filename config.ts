@@ -52,7 +52,7 @@ export const config = {
      * 
      * @type {number}
      */
-    Port: Number(process.env.PORT as string),
+    Port: Number(process.env.PORT as string) || 1234,
 
     /**
      * The secret key used for signing JWT tokens.

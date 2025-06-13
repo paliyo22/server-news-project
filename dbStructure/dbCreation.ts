@@ -1,8 +1,16 @@
 import { connection } from "../db/mysql";
 import mysql, { type ResultSetHeader } from 'mysql2/promise'
 
+/**
+ * Function to check and create necessary tables in the MySQL database.
+ * This function creates several tables related to roles, genres, news, users, comments, and likes.
+ * It also inserts default data into the genre and role tables.
+ * 
+ * @returns {Promise<void>} - A promise that indicates if the tables were successfully created.
+ */
 async function checkMySQLConnection(): Promise<void> {
   try {
+    // Create the "role" table to store user roles
     await connection.query(
         `CREATE TABLE role(
             id int auto_increment primary key,
@@ -10,6 +18,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "genre" table to store news genres
     await connection.query(
         `create table genre(
             id int auto_increment primary key,
@@ -17,7 +26,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
-
+    // Create the "news" table to store news items
     await connection.query(
         `create table news(
             id binary(16) primary key default(uuid_to_bin(uuid())),
@@ -38,6 +47,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "user" table to store user information
     await connection.query(
         `create table user(
             id binary(16) primary key default(uuid_to_bin(uuid())),
@@ -56,6 +66,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "comment" table to store comments for news items
     await connection.query(
         `create table comment(
             id binary(16) primary key default(uuid_to_bin(uuid())),
@@ -71,6 +82,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "likes_x_news" table to store users' likes for news items
     await connection.query(
         `CREATE TABLE likes_x_news (
             user_id BINARY(16) NOT NULL,
@@ -81,6 +93,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "likes_x_comment" table to store users' likes for comments
     await connection.query(
         `create table likes_x_comment(
             user_id BINARY(16) NOT NULL,
@@ -91,6 +104,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "last_pull" table to store the timestamp of the last pull
     await connection.query(
         `CREATE TABLE last_pull (
             id TINYINT PRIMARY KEY DEFAULT 1,
@@ -98,6 +112,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Insert default data into the genre table
     await connection.query(
         `INSERT INTO genre (id, name) VALUES
             ( 1, 'entertainment'),
@@ -109,36 +124,48 @@ async function checkMySQLConnection(): Promise<void> {
             ( 7, 'technology');`
     );
 
+    // Insert default data into the role table
     await connection.query(
         `INSERT INTO role (id, name) VALUES
             ( 1, 'user'),
             ( 2, 'admin');`
     );
 
-    console.log('✅ Tablas creadas correctamente.');
+    console.log('✅ Tables created successfully.');
   } catch (error) {
-    console.log(error);
-    console.error('❌ Error al conectar con MySQL:', error);
+    console.error('❌ Error connecting to MySQL:', error);
   }
 }
 
-const DEFAULT_CONFIG={ //esto se manda a config despues
-    //se borro luego de ejecutarse.
+/**
+ * Default configuration for MySQL database connection.
+ * This configuration is used to establish an initial connection to the database.
+ * 
+ * @constant {object} DEFAULT_CONFIG - Default database connection configuration.
+ */
+const DEFAULT_CONFIG={ 
+  //se borro luego de ejecutarse.
 }
 
 const LocalConnection = await mysql.createConnection(DEFAULT_CONFIG); 
 
+/**
+ * Function to transfer data from a local database to a remote database.
+ * It connects to a local database, selects news records, and inserts them into the remote database.
+ * 
+ * @returns {Promise<void>} - A promise that indicates if the data migration was successful.
+ */
 async function transferData(): Promise<void> {
   try {
 
     const [rows] = await LocalConnection.query(`SELECT * FROM news;`) as [any[], any];
 
     if (!rows.length) {
-      console.log('No hay registros para migrar.');
+      console.log('No records to migrate.');
       return;
     }
 
-    console.log(`Migrando ${rows.length} registros...`);
+    console.log(`Migrating ${rows.length} records...`);
 
 
     const insertQuery = `
@@ -168,9 +195,9 @@ async function transferData(): Promise<void> {
 
     const [result] = await connection.query(insertQuery, [values]) as [ResultSetHeader, any];
 
-    console.log(`✅ Migración completada: ${result.affectedRows} registros insertados.`);
+    console.log(`✅ Migration completed: ${result.affectedRows} records inserted.`);
   } catch (error) {
-    console.error('❌ Error durante la migración:', error);
+    console.error('❌ Error during migration:', error);
   }
 }
 
