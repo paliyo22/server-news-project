@@ -5,6 +5,12 @@ import { validateUserOutput, type UserInput, type UserOutput } from "../../schem
 
 export class UserModel implements IUserModel{
 
+  /**
+   * Deletes a comment if it belongs to the specified user.
+   * @param {string} commentId - ID of the comment to delete.
+   * @param {string} userId - ID of the user attempting the deletion.
+   * @returns {Promise<boolean>} True if deletion succeeded, false otherwise.
+   */
   async deleteComment(commentId: string, userId: string): Promise<boolean> {
     const [rows] = await connection.query(
       `DELETE FROM comment 
@@ -17,6 +23,12 @@ export class UserModel implements IUserModel{
     return true;
   }
 
+  /**
+   * Removes a like from a news item by the specified user.
+   * @param {string} userId - ID of the user.
+   * @param {string} newsId - ID of the news item.
+   * @returns {Promise<boolean>} True if dislike (removal) succeeded, false otherwise.
+   */
   async dislike(userId: string, newsId: string): Promise<boolean> {
     const [rows] = await connection.query(
       `DELETE FROM likes_x_news 
@@ -29,6 +41,13 @@ export class UserModel implements IUserModel{
     return true;
   }
 
+  /**
+   * Adds a comment to a news item, optionally as a reply to a parent comment.
+   * @param {string} userId - ID of the user adding the comment.
+   * @param {string} newsId - ID of the news item.
+   * @param {string} comment - Content of the comment.
+   * @param {string} [parentId] - Optional ID of the parent comment.
+   */
   async addComment(userId: string, newsId: string, comment: string, parentId?: string): Promise<void> {
     
     await connection.query(
@@ -39,6 +58,13 @@ export class UserModel implements IUserModel{
     
   }
 
+  /**
+   * Adds a like from a user to a news item.
+   * @param {string} userId - ID of the user.
+   * @param {string} newsId - ID of the news item.
+   * @returns {Promise<boolean>} True if like was added, false if it already existed.
+   * @throws Throws error if query fails with unexpected error.
+   */
   async addLike(userId: string, newsId: string): Promise<boolean> {
     try{
       await connection.query(
@@ -54,6 +80,10 @@ export class UserModel implements IUserModel{
     }
   }
   
+  /**
+   * Deletes all inactive users.
+   * @returns {Promise<number>} Number of users deleted.
+   */
   async erase(): Promise<number> {
     const [rows] = await connection.query(
       `DELETE FROM user WHERE is_active = false;`
@@ -61,6 +91,13 @@ export class UserModel implements IUserModel{
     return rows.affectedRows;
   }
 
+  /**
+   * Updates specified fields of a user.
+   * @param {string} id - ID of the user to update.
+   * @param {Partial<UserInput>} input - Partial object containing fields to update.
+   * @returns {Promise<UserOutput>} Updated user data.
+   * @throws Throws error if no fields provided or validation fails.
+   */
   async update(id: string, input: Partial<UserInput>): Promise<UserOutput> {
     if (Object.keys(input).length === 0) {
         throw new Error('No fields provided for update.');
@@ -110,6 +147,12 @@ export class UserModel implements IUserModel{
     return result.output as UserOutput
   }
 
+  /**
+   * Retrieves a paginated list of all users.
+   * @param {number} limit - Maximum number of users to retrieve.
+   * @param {number} offset - Number of users to skip.
+   * @returns {Promise<UserOutput[] | null>} Array of users or null if none found.
+   */
   async getAll(limit: number, offset: number): Promise<UserOutput[] | null> {
     const [rows] = await connection.query(`
       SELECT BIN_TO_UUID(u.id) AS id, u.user_name AS name, u.lastname, u.birthday, u.username,
@@ -129,6 +172,11 @@ export class UserModel implements IUserModel{
     return users;
   }
   
+  /**
+   * Toggles the active status of a user.
+   * @param {string} id - ID of the user.
+   * @returns {Promise<boolean>} New active status (true = active, false = inactive).
+   */
   async status(id: string): Promise<boolean> {
     await connection.query(
         `UPDATE user SET is_active = (NOT is_active) WHERE id = UUID_TO_BIN(?);`, [id]
@@ -142,6 +190,13 @@ export class UserModel implements IUserModel{
     return true;
   }
   
+  /**
+   * Checks if a user has liked a specific news item.
+   * @param {string} userId - ID of the user.
+   * @param {string} newsId - ID of the news item.
+   * @returns {Promise<boolean>} True if user liked the news, false otherwise.
+   * @throws Throws error if query fails.
+   */
   async isLiked(userId: string, newsId: string): Promise<boolean> {
     try{
       const [result] = await connection.query(

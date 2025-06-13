@@ -7,6 +7,12 @@ import { validateCommentOutput, validateOutputNews, type CommentOutput, type Com
 
 export class NewsModel implements INewsModel{
 
+  /**
+   * Inserts a genre if it doesn't exist and returns its ID.
+   * @param {Category} category - The genre name.
+   * @returns {Promise<number>} Genre ID.
+   * @throws {Error} If the genre ID cannot be retrieved.
+   */
   private async getOrCreateGenreId(category: Category): Promise<number> {
       await connection.query(
           `INSERT IGNORE INTO genre (name) VALUES (?);`,
@@ -23,6 +29,12 @@ export class NewsModel implements INewsModel{
       return genreId;
   }
 
+  /**
+   * Inserts a news item into the database.
+   * @param {any} i - Object containing news data.
+   * @param {number} genreId - Genre ID for the news.
+   * @param {string} uuid - Generated UUID for the news.
+   */
   private async insertNewsItem(i: any, genreId: number, uuid: string) {
       await connection.query(
           `INSERT IGNORE INTO news (
@@ -37,6 +49,12 @@ export class NewsModel implements INewsModel{
       );
   }
 
+  /**
+   * Inserts related subnews items linked to a parent news.
+   * @param {any[]} subnews - Array of subnews items.
+   * @param {number} genreId - Genre ID.
+   * @param {string} parentUuid - UUID of the parent news item.
+   */
   private async insertSubnews(subnews: any[], genreId: number, parentUuid: string) {
       for (const e of subnews) {
           try {
@@ -65,6 +83,13 @@ export class NewsModel implements INewsModel{
       }
   }
 
+  /**
+   * Retrieves a paginated list of active news items.
+   * @param {number} limit - Maximum number of results.
+   * @param {number} offset - Number of results to skip.
+   * @returns {Promise<{ data: NewsOutput[], total: number } | null>} News data and total count.
+   * @throws {Error} On connection or validation failure.
+   */
   async getNews(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number } | null> {
     try {
       const [rows] = await connection.query(
@@ -96,6 +121,12 @@ export class NewsModel implements INewsModel{
     } 
   }
 
+  /**
+   * Retrieves featured news with most likes in the past month.
+   * @param {number} limit - Maximum number of results.
+   * @returns {Promise<NewsOutput[] | null>} List of featured news.
+   * @throws {Error} On validation or connection failure.
+   */
   async featuredNews(limit: number): Promise<NewsOutput[] | null> {
     try {
       const [rows] = await connection.query(
@@ -127,6 +158,12 @@ export class NewsModel implements INewsModel{
     }
   }
   
+  /**
+   * Retrieves a news item by its ID.
+   * @param {string} id - UUID of the news item.
+   * @returns {Promise<NewsOutput | null>} The news item or null if not found.
+   * @throws {Error} On validation or connection failure.
+   */
   async getById(id: string): Promise<NewsOutput | null> {
      try {
       const [rows] = await connection.query(
@@ -157,6 +194,12 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Retrieves subnews items related to a parent news item.
+   * @param {string} id - UUID of the parent news item.
+   * @returns {Promise<NewsOutput[] | null>} List of subnews.
+   * @throws {Error} On validation or connection failure.
+   */
   async getSubnews(id:string): Promise<NewsOutput[] | null> {
     try {
       const [rows] = await connection.query(
@@ -190,6 +233,12 @@ export class NewsModel implements INewsModel{
     } 
   }
 
+  /**
+   * Retrieves top-level comments for a news item.
+   * @param {string} id - UUID of the news item.
+   * @returns {Promise<CommentOutput[] | null>} List of comments.
+   * @throws {Error} On validation failure.
+   */
   async getComments(id: string): Promise<CommentOutput[] | null> {
   
     const [rows] = await connection.query(
@@ -218,6 +267,11 @@ export class NewsModel implements INewsModel{
     return comments;
   }
 
+  /**
+   * Toggles the active status of a news item.
+   * @param {string} id - UUID of the news item.
+   * @returns {Promise<boolean>} True if the status was changed successfully.
+   */
   async status(id: string): Promise<boolean> {
     try {
         const [result] = await connection.query(
@@ -232,6 +286,10 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Deletes all inactive news items.
+   * @returns {Promise<number>} Number of deleted news items.
+   */
   async clean(): Promise<number> {
     try {
         const [result] = await connection.query(
@@ -243,6 +301,12 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Saves a batch of news items with their category.
+   * @param {NewsImput} news - News data to save.
+   * @param {Category} category - Category of the news.
+   * @throws {Error} On transaction failure.
+   */
   async saveNews(news: NewsImput, category: Category): Promise<void> {
     try {
         await connection.beginTransaction();
@@ -271,6 +335,13 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Retrieves a paginated list of inactive news items.
+   * @param {number} limit - Maximum number of results.
+   * @param {number} offset - Number of results to skip.
+   * @returns {Promise<{ data: NewsOutput[], total: number } | null>} News data and total count.
+   * @throws {Error} On connection or validation failure.
+   */
   async getInactive(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number } | null> {
     try {
       const [rows] = await connection.query(
@@ -300,6 +371,12 @@ export class NewsModel implements INewsModel{
     } 
   }
 
+  /**
+   * Retrieves child comments for a given comment.
+   * @param {string} commentId - UUID of the parent comment.
+   * @returns {Promise<CommentOutput[] | null>} List of child comments.
+   * @throws {Error} On validation failure.
+   */
   async getChildComments(commentId: string): Promise<CommentOutput[] | null> {
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(c.id) AS id, BIN_TO_UUID(c.user_id) AS user_id,
@@ -325,6 +402,14 @@ export class NewsModel implements INewsModel{
     return comments;
   }
 
+  /**
+   * Retrieves a paginated list of news filtered by category.
+   * @param {number} limit - Maximum number of results.
+   * @param {number} offset - Number of results to skip.
+   * @param {Category} category - Category to filter news by.
+   * @returns {Promise<{ data: NewsOutput[], total: number } | null>} News data and total count.
+   * @throws {Error} On connection or validation failure.
+   */
   async getByCategory(limit: number, offset: number, category: Category): Promise<{ data: NewsOutput[], total: number } | null> {
     try {
 

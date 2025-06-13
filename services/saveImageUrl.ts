@@ -1,6 +1,18 @@
 import axios from "axios";
 import type { NewsImput } from "../schemas";
 
+/**
+ * Resolves the final image URL after handling potential redirects.
+ * 
+ * This function takes an image URL and checks if it's valid. If the URL leads to a redirect,
+ * the function follows the redirect chain and returns the final URL. If there is no valid URL 
+ * or if any error occurs, it returns `null`.
+ * 
+ * @param {string | undefined} url - The image URL to resolve. If the URL is invalid or undefined, the function returns `null`.
+ * @param {string} [context=""] - An optional string to provide context in log messages (e.g., the news item title).
+ * 
+ * @returns {Promise<string | null>} - The final resolved image URL or `null` if no valid URL is found or an error occurs.
+ */
 const resolveImageUrl = async (url?: string, context: string = ""): Promise<string | null> => {
     if (!url || typeof url !== "string") {
         console.log(`No hay thumbnail válido para procesar en ${context}`);
@@ -30,6 +42,18 @@ const resolveImageUrl = async (url?: string, context: string = ""): Promise<stri
     }
 };
 
+/**
+ * Saves the final image URL for each item and its subnews by resolving thumbnail URLs.
+ * 
+ * This function iterates over the provided `newsArray`, processes the `thumbnail` URL for each news item 
+ * and its subnews (if any), and stores the resolved image URL. It uses the `resolveImageUrl` function 
+ * to handle redirects and validate URLs.
+ * 
+ * @param {NewsImput} newsArray - The array of news items to process. Each news item may contain a `thumbnail` URL 
+ *                               that needs to be resolved.
+ * 
+ * @returns {Promise<NewsImput>} - A promise that resolves to the updated `newsArray` with resolved image URLs.
+ */
 export const saveUrlImage = async (newsArray: NewsImput): Promise<NewsImput> => {
     for (const row of newsArray.items) {
         row.image_url = await resolveImageUrl(row.images?.thumbnail, row.title);

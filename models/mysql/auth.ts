@@ -6,8 +6,19 @@ import { validateUserOutput, type AuthInput, type UserInput, type UserOutput } f
 import { config } from "../../config";
 import type { ResultSetHeader } from "mysql2";
 
+/**
+ * The AuthModel class handles user authentication, token management, and role assignment.
+ * It interacts with the database to create users, log them in, and manage their roles and passwords.
+ */
 export class AuthModel implements IAuthModel{
 
+  /**
+   * Retrieves or creates a role in the database and returns its ID.
+   * 
+   * @param {Role} role - The role to be retrieved or created.
+   * @returns {Promise<number>} The ID of the role.
+   * @throws {Error} If the role ID cannot be retrieved.
+   */
   private async getOrCreateRoleId(role: Role): Promise<number> {
       await connection.query(
           `INSERT IGNORE INTO role (name) VALUES (?);`,
@@ -24,6 +35,13 @@ export class AuthModel implements IAuthModel{
       return roleId;
   }
 
+  /**
+   * Creates a new user in the database.
+   * 
+   * @param {UserInput} user - The data of the user to be created.
+   * @returns {Promise<UserOutput | boolean>} The created user's data or `true` if the username already exists.
+   * @throws {Error} If an error occurs during user creation.
+   */
   async createUser(user: UserInput): Promise<UserOutput | boolean> {
     try {
       const roleId = await this.getOrCreateRoleId(user.role);
@@ -60,6 +78,14 @@ export class AuthModel implements IAuthModel{
     }
   }
   
+  /**
+   * Retrieves a user by ID from the database.
+   * 
+   * @param {string} id - The ID of the user to retrieve.
+   * @param {string} [expectedRefreshToken] - The expected refresh token (optional).
+   * @returns {Promise<UserOutput | null>} The user data if found, or null if not found.
+   * @throws {Error} If there is a validation error with the user data.
+   */
   async getById(id: string, expectedRefreshToken?: string): Promise<UserOutput | null> {
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(u.id) AS id, u.user_name AS name, u.lastname, u.birthday, u.username,
@@ -83,19 +109,37 @@ export class AuthModel implements IAuthModel{
     return result.output as UserOutput
   }
 
-  //no se verifica si retorna 0 filas afectadas ya que para ejecutarse se verifica la coneccion y si no falla se borra el refresh igual
+  /**
+   * Revokes the refresh token for a user, essentially logging them out.
+   * 
+   * @param {string} id - The ID of the user whose token should be revoked.
+   * @returns {Promise<void>} Resolves when the refresh token has been revoked.
+   */
   async revokeToken(id: string): Promise<void> {
     await connection.query(
       `UPDATE user SET refresh_token = null WHERE id = UUID_TO_BIN(?)`,[id]
     );
   }
 
+  /**
+   * Saves a new refresh token for the user in the database.
+   * 
+   * @param {string} id - The ID of the user to save the token for.
+   * @param {string} token - The refresh token to save.
+   * @returns {Promise<void>} Resolves when the refresh token has been saved.
+   */
   async saveToken(id: string, token: string): Promise<void>{
     const [rows] = await connection.query(
       `UPDATE user SET refresh_token = ? WHERE id = UUID_TO_BIN(?)`,[token, id]
     );
   }
 
+  /**
+   * Logs in a user by verifying their credentials.
+   * 
+   * @param {AuthInput} auth - The user's credentials (email and password).
+   * @returns {Promise<UserOutput | null>} The user data if login is successful, or null if credentials are invalid.
+   */
   async logIn(auth: AuthInput): Promise<UserOutput | null>{ 
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(u.id) AS id, u.user_name AS name, u.lastname, u.birthday, u.username,
@@ -122,6 +166,15 @@ export class AuthModel implements IAuthModel{
     
   }
 
+  /**
+   * Updates the user's password.
+   * 
+   * @param {string} id - The ID of the user who wants to update their password.
+   * @param {string} oldPassword - The user's current password.
+   * @param {string} newPassword - The new password to set.
+   * @returns {Promise<boolean>} `true` if the password was updated successfully, otherwise `false`.
+   * @throws {Error} If the passwords are the same or if the old password does not match.
+   */
   async newPassword(id: string, oldPassword: string, newPassword: string): Promise<boolean>{
     if(oldPassword === newPassword){
       throw new Error("It's the same password")
@@ -147,6 +200,14 @@ export class AuthModel implements IAuthModel{
     return true;
   }
   
+  /**
+   * Updates the user's role in the database.
+   * 
+   * @param {string} id - The ID of the user whose role needs to be updated.
+   * @param {Role} role - The new role to assign to the user.
+   * @returns {Promise<void>} Resolves when the role has been updated.
+   * @throws {Error} If the user already has the assigned role.
+   */
   async newRole(id: string, role: Role): Promise<void> {
     const [rows] = await connection.query(
       `UPDATE user 

@@ -1,6 +1,12 @@
 import type { Category } from "../enum/category";
 import type { NewsImput, NewsOutput, CommentSchema, CommentOutput } from "../schemas";
 
+/**
+ * Interface for managing news articles, subnews, comments, and their statuses. This interface defines methods
+ * for retrieving news by various filters, saving new articles, managing comments, and cleaning up data.
+ * 
+ * @interface INewsModel
+ */
 export interface INewsModel {
     getNews(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number } | null> 
     featuredNews(limit: number): Promise<NewsOutput[] | null>

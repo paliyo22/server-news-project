@@ -3,7 +3,12 @@ import type { IAuthModel } from "../interfaces"
 import { AuthController } from "../controllers"
 import { authenticateToken, authorizeAdmin, refreshToken } from "../middlewares"
 
-
+/**
+ * Creates and configures the authentication-related routes.
+ * @param {object} params - Parameters object.
+ * @param {IAuthModel} params.authModel - The authentication model instance.
+ * @returns {Router} Configured Express router for authentication.
+ */
 export const authRoutes = ({authModel}: {authModel: IAuthModel}): Router => {
     const authRouter = Router()
     const authCotroller = new AuthController(authModel)

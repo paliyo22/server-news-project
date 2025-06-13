@@ -41,10 +41,20 @@ export type AuthInput = InferInput<typeof authSchema>
 
 export type UserInput = InferInput<typeof userInputSchema>
 
+/**
+ * Validates the user input (creation or update).
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<UserInput>} The validation result.
+ */
 export const validateUser = (input: unknown) => {
     return safeParse(userInputSchema, input)
 } 
 
+/**
+ * Validates the user output, and coerces values for `subscription` and `is_active` to booleans.
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<UserOutput>} The validation result.
+ */
 export const validateUserOutput = (input: unknown) => {
     if (typeof input === "object" && input !== null && "subscription" in input) {
         const obj = input as { [key: string]: any };
@@ -58,14 +68,29 @@ export const validateUserOutput = (input: unknown) => {
     return safeParse(userOutputSchema, input)
 } 
 
+/**
+ * Validates partial user input (for updating specific fields).
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<UserInput>} The validation result.
+ */
 export const validatePartialUser = (input: unknown) => {
     return safeParse(partial(userInputSchema), input)
 }
 
+/**
+ * Validates the authentication input (email and password).
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<AuthInput>} The validation result.
+ */
 export const validateAuth = (input: unknown) => {
     return safeParse(authSchema, input)
 }
 
+/**
+ * Validates the password input, ensuring it meets the minimum length requirement.
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<string>} The validation result.
+ */
 export const validatePassword = (input: unknown) => {
     return safeParse(passwordSchema, input);
 }

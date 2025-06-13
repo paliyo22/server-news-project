@@ -36,10 +36,21 @@ export type NewsImput = InferInput<typeof welcomeSchema>
 
 export type NewsOutput = InferInput<typeof itemSchema> 
 
+/**
+ * Validates unknown input against the news API welcome schema.
+ * @param {unknown} input - The data to validate.
+ * @returns {import("valibot").SafeParseReturn<NewsInput>} Validation result.
+ */
 export const validateApiNews = (input: unknown) => {
     return safeParse(welcomeSchema, input);
 }
 
+/**
+ * Validates unknown input against the news item schema.
+ * Also coerces `hasSubnews` and `is_active` fields to booleans if present.
+ * @param {unknown} input - The data to validate.
+ * @returns {import("valibot").SafeParseReturn<NewsOutput>} Validation result.
+ */
 export const validateOutputNews = (input: unknown) => {
     if (typeof input === "object" && input !== null && "hasSubnews" in input) {
         const obj = input as { [key: string]: any };

@@ -4,7 +4,14 @@ import { UserController } from "../controllers/user"
 import { authenticateToken, authorizeAdmin } from "../middlewares"
 import type { IAuthModel } from "../interfaces"
 
-
+/**
+ * Creates and configures the routes related to user management.
+ * @param {object} params - Parameters object containing the userModel.
+ * @param {IUserModel} params.userModel - The user model instance.
+ * @param {object} authParams - Parameters object containing the authModel.
+ * @param {IAuthModel} authParams.authModel - The authentication model instance.
+ * @returns {Router} Configured Express router for user routes.
+ */
 export const userRoutes = (
     {userModel}: {userModel: IUserModel}, 
     {authModel}: {authModel: IAuthModel}

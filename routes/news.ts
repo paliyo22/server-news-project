@@ -3,7 +3,12 @@ import { NewsController } from "../controllers/news"
 import type { INewsModel } from "../interfaces/INewsModel"
 import { authenticateToken, authorizeAdmin } from "../middlewares"
 
-
+/**
+ * Creates and configures the routes related to news management.
+ * @param {object} params - Parameters object.
+ * @param {INewsModel} params.newsModel - The news model instance.
+ * @returns {Router} Configured Express router for news.
+ */
 export const newsRoutes = ({newsModel}: {newsModel: INewsModel}): Router => {
     const newsRouter = Router()
     const newsController = new NewsController(newsModel)
