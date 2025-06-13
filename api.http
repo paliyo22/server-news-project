@@ -1,0 +1,28 @@
+GET https://google-news13.p.rapidapi.com/world?lr=es-AR
+Content-Type: application/json
+x-rapidapi-key: fe5cee5d5emsheb3dd67a6c86484p1151d6jsnb08f71df05a7
+x-rapidapi-host: google-news13.p.rapidapi.com
+
+###
+GET https://news-f8836-default-rtdb.firebaseio.com/news/.json
+Content-Type: application/json
+
+###
+GET http://localhost:1234/auth/register
+Content-Type: application/json
+
+###
+GET http://localhost:1234/news/featured
+Content-Type: application/json
+
+###
+GET http://localhost:1234/news/978b63e5-4444-11f0-ba24-c87f54681d88
+Content-Type: application/json
+
+###
+POST http://localhost:1234/news/replies
+Content-Type: application/json
+
+{
+    "commentId": "c15e7c73-4604-11f0-ba24-c87f54681d88"
+}
