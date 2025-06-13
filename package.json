@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "lint": "eslint .",
+    "start": "bun run index.ts",
     "sql": "bun run PRUEBAS/dbCreation.ts",
     "load": "bun run PRUEBAS/pullFirebase.ts",
     "prueba": "bun run PRUEBAS/functionsTest.ts",
