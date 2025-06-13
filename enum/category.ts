@@ -15,3 +15,6 @@ export enum Category {
   "Tecnologia"      = 'technology'
 }
 
+export function isCategory(value: string): value is Category {
+  return Object.values(Category).includes(value as Category);
+}
