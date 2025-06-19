@@ -45,4 +45,4 @@ export const apiData = async (category: string): Promise<NewsImput> => {
  * @param {number} ms - The number of milliseconds to wait.
  * @returns {Promise<void>} - A promise that resolves after the delay.
  */
-export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));

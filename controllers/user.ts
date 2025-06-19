@@ -7,15 +7,16 @@ import  { logOut } from '../services/endSession';
 import { Role } from '../enum/role';
 
 /**
- * UserController handles user-related actions such as retrieving user information,
- * updating user details, managing likes and comments, and deleting accounts.
+ * Controller responsible for handling user-related HTTP operations.
+ * Routes include user profile management, likes on news, and admin cleanup.
  */
 export class UserController {
 
     /**
      * Creates an instance of UserController.
-     * @param userModel - A data access layer implementing the IUserModel interface.
-     * @param authModel - A data access layer implementing the IAuthModel interface.
+     * 
+     * @param {IUserModel} userModel - The user model for DB operations.
+     * @param {IAuthModel} authModel - The auth model used for token-based auth and session handling.
      */
     constructor(
         private readonly userModel: IUserModel,
@@ -23,17 +24,20 @@ export class UserController {
     ) {}
 
     /**
-     * Retrieves a user by their ID. Admins can fetch any user, while other users
-     * can only access their own data.
+     * Retrieves the profile of the authenticated user, or another user if admin.
      * 
-     * @param req - HTTP request object containing the `id` param.
-     * @param res - HTTP response object to send the result.
+     * @route GET /users/ or /users/:id
+     * @access Authenticated users, admins for ID-based lookup.
+     * 
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends user data or error.
      */
     getById = async (req: Request, res: Response): Promise<void> => { 
         let id;
 
         if((req as any).user?.role === Role.ADMIN){
-            if(typeof req.params?.id !== "string" || req.params?.id.trim() === ""){
+            if(!req.params?.id || typeof req.params?.id !== "string" || req.params?.id.trim() === ""){
                 res.status(400).json({ error: 'bad request' });
                 return;
             }else{
@@ -45,21 +49,28 @@ export class UserController {
 
         try {
             const user = await getUserById(id, this.authModel)
-            if (!user) {
-                res.status(404).json({ error: 'user not found' });
-                return;
+            if(!user){
+                res.status(400).json({ error: 'Invalid user'})
             }
-            res.status(200).json(user);
+            res.status(200).json({ user });
         } catch (e) {
-            res.status(500).json({ error: 'error connecting to database' });
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
         }
     }
 
     /**
-     * Retrieves a list of users with optional pagination.
+     * Retrieves a paginated list of all users. Requires admin access.
      * 
-     * @param req - HTTP request object with optional `limit` and `offset` query params.
-     * @param res - HTTP response object to send the result.
+     * @route GET /users?limit=&offset=
+     * @access Admin only.
+     * 
+     * @param {Request} req - Express request object, with optional query params.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends list of users or error.
      */
     getAll = async (req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
@@ -73,58 +84,38 @@ export class UserController {
         }
         try {
             const user = await this.userModel.getAll(limit, offset);
-            if(!user){
-                res.status(401).json({ error: "Not Founded" });
-            }
-            res.status(200).json(user)
+            
+            res.status(200).json({ user });
         } catch (e) {
-            res.status(500).json({ error: "Internal Server Error" });
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
         }
     }
 
     /**
-     * Updates a user's data. Only authorized users can update their own data.
+     * Updates the profile of the authenticated user with partial data.
      * 
-     * @param req - HTTP request object containing the body data to update the user.
-     * @param res - HTTP response object with the updated user data.
+     * @route PATCH /users/
+     * @access Authenticated users.
+     * 
+     * @param {Request} req - Express request object with user data in body.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends updated user or error.
      */
     update = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const result = validatePartialUser(req.body);
 
         if(!result.success){
-            res.status(400).json({ error: 'bad request'});
+            res.status(400).json({ error: result.issues });
             return;
         }
         try {
             const user = await this.userModel.update(token.id, result.output);
-            res.status(200).json(user)
-        } catch (e) {
-            if (e instanceof Error) {
-                res.status(500).json({ error: e.message });
-            } else {
-                res.status(500).json({ error: "Internal Server Error" });
-            }
-        }
-    }
-
-     /**
-     * Changes the status of the user account (e.g., deactivate or reactivate).
-     * 
-     * @param req - HTTP request object containing the user info.
-     * @param res - HTTP response object to send the result.
-     */
-    changeStatus = async (req: Request, res: Response): Promise<void> => {
-        const token = (req as any).user;
-        
-        try {
-            const result = await this.userModel.status(token.id);
-            if(!result){
-                await logOut(req, res, this.authModel);
-                res.status(200).json({ message: 'The acount is deleted' })
-                return;
-            }            
-            res.status(200).json({ message: 'Welcome back' });
+            res.status(200).json({ user })
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -135,46 +126,69 @@ export class UserController {
     }
 
     /**
-     * Cleans up users data based on a security password verification.
+     * Deletes all inactive users if the provided password matches the internal admin password.
      * 
-     * @param req - HTTP request object containing the password.
-     * @param res - HTTP response object to send the result.
+     * @route DELETE /users/clean
+     * @access Admin only.
+     * 
+     * @param {Request} req - Express request object, requires password in body.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends deletion result or error. Logs out on failure.
      */
     clean = async (req: Request, res: Response): Promise<void> => {
-        const password = req.body?.password
+        const password = req.body?.password;
+
+        if(!password || typeof password !== 'string' || password.trim() === ''){
+            res.status(400).json({ error: 'bad request'});
+            return;
+        }
+
         try{
             if(password !== config.Password){
-                await logOut(req, res, this.authModel)
-                res.status(401).json({ error: 'Verification failed. Your session has been terminated for security reasons.' })
+                await logOut(req, res, this.authModel);
+                res.status(401).json({ error: 'Verification failed. Your session has been terminated for security reasons.' });
                 return;
             }
+
             const deletedCount = await this.userModel.erase();
-            res.status(200).json({ success: true, deleted: deletedCount })
+
+            res.status(200).json({ success: true, deleted: deletedCount });
         } catch (e) {
-            res.status(500).json({ error: "Internal Server Error" });
-            
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
         }
     }
 
     /**
-     * Saves a like for a specific news article by the authenticated user.
+     * Adds a like to a specific news item from the authenticated user.
      * 
-     * @param req - HTTP request object containing the `id` param (newsId).
-     * @param res - HTTP response object indicating success or failure.
+     * @route POST /users/like/:id
+     * @access Authenticated users.
+     * 
+     * @param {Request} req - Express request object with news ID in URL.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends success status or duplicate error.
      */
     saveLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
-        if (typeof newsId !== 'string') {
+
+        if (!newsId || typeof newsId !== 'string' || newsId.trim() === '') {
             res.status(400).json({ error: 'Invalid or missing id parameter' });
             return;
         }
+
         try {
             const result = await this.userModel.addLike(token.id, newsId);
+
             if(!result){
                 res.status(400).json({ error: 'Already exist' });
                 return;
             }
+
             res.status(200).json({ success: true });
         } catch (e) {
             res.status(500).json({ error: 'Internal Server Error' });
@@ -182,59 +196,32 @@ export class UserController {
     }
 
     /**
-     * Saves a comment for a specific news article by the authenticated user.
-     * Optionally, a parent comment ID can be provided to create a reply.
+     * Removes a like from a specific news item by the authenticated user.
      * 
-     * @param req - HTTP request object containing the `id` param (newsId) and comment body.
-     * @param res - HTTP response object indicating success or failure.
-     */
-    saveComment = async (req: Request, res: Response): Promise<void> => {
-        const token = (req as any).user;
-        const newsId = req.params.id;
-        const { comment, parentCommentId } = req.body;
-
-        console.log("aca llega")
-        if(typeof comment !== "string" || comment.trim() === ""){
-                res.status(400).json({ error: 'Bad request' });
-                return;
-        }
-        if (typeof newsId !== 'string') {
-            res.status(400).json({ error: 'Invalid or missing id parameter' });
-            return;
-        }
-        
-        try {
-            if(!parentCommentId || typeof parentCommentId !== "string" || parentCommentId.trim() === ""){
-                console.log("aca entra")
-                await this.userModel.addComment(token.id, newsId, comment);
-            }else{
-                await this.userModel.addComment(token.id, newsId, comment, parentCommentId);
-            }
-            res.status(200).json({ success: true });
-        } catch (e) {
-            res.status(500).json({ error: 'Internal Server Error' });
-        }
-    }
-
-    /**
-     * Deletes a like from a specific news article by the authenticated user.
+     * @route DELETE /users/like/:id
+     * @access Authenticated users.
      * 
-     * @param req - HTTP request object containing the `id` param (newsId).
-     * @param res - HTTP response object indicating success or failure.
+     * @param {Request} req - Express request object with news ID in URL.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends success or not found.
      */
     deleteLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
-        if (typeof newsId !== 'string') {
+
+        if (!newsId || typeof newsId !== 'string' || newsId.trim() === '') {
             res.status(400).json({ error: 'Invalid or missing id parameter' });
             return;
         }
+
         try {
             const result = await this.userModel.dislike(token.id, newsId);
+
             if(!result){
                 res.status(404).json({ error: "Like not found" });
                 return;
             }
+
             res.status(200).json({ success: true });
         } catch (e) {
             res.status(500).json({ error: 'Internal Server Error' });
@@ -242,50 +229,60 @@ export class UserController {
     }
 
     /**
-     * Deletes a comment by its ID. Only the author of the comment or an admin can delete it.
+     * Checks if the authenticated user has liked a specific news item.
      * 
-     * @param req - HTTP request object containing the `id` param (commentId).
-     * @param res - HTTP response object indicating success or failure.
-     */
-    deleteComment = async (req: Request, res: Response): Promise<void> => {
-        const token = (req as any).user;
-        const commentId = req.params.id;
-
-        if (typeof commentId !== 'string') {
-            res.status(400).json({ error: 'Invalid or missing id parameter' });
-            return;
-        }
-        try {
-            const result = await this.userModel.deleteComment(commentId, token.id);
-            if(!result){
-                res.status(404).json({ error: "Comment not found or without authorization" });
-                return;
-            }
-            res.status(200).json({ success: true });
-        } catch (e) {
-            res.status(500).json({ error: 'Internal Server Error' });
-        }
-    }
-    
-    /**
-     * Checks if a user has liked a specific news article.
+     * @route GET /users/like/:id
+     * @access Authenticated users.
      * 
-     * @param req - HTTP request object containing the `id` param (newsId).
-     * @param res - HTTP response object with a boolean result indicating whether the news has been liked.
+     * @param {Request} req - Express request object with news ID in URL.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>} Sends a boolean field `liked`.
      */
     isLiked = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
 
-        if (typeof newsId !== 'string') {
+        if (!newsId || typeof newsId !== 'string' || newsId.trim() === '') {
             res.status(400).json({ error: 'Invalid or missing id parameter' });
             return;
         }
+
         try {
             const result = await this.userModel.isLiked(token.id, newsId);
-            res.status(200).json({ result });
+
+            res.status(200).json({ liked: result });
         } catch (e) {
             res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
+    /**
+     * Deactivates the authenticated user's account and logs them out.
+     *
+     * - Sets the user's `is_active` flag to false.
+     * - Deactivates all comments associated with the user.
+     * - Revokes the user's refresh token.
+     * - Clears the authentication cookies.
+     *
+     * @param {Request} req - HTTP request object, must include the authenticated user's token.
+     * @param {Response} res - HTTP response object.
+     * @returns {Promise<void>} Sends a JSON response indicating success or an internal error.
+     */
+    deleteUser = async (req: Request, res: Response): Promise<void> => {
+        const token = (req as any).user;
+        
+        try {
+            await this.userModel.delete(token.id);
+
+            await logOut(req, res, this.authModel);
+                      
+            res.status(200).json({ message: 'The acount was deleted' });
+        } catch (e) {
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
         }
     }
 }

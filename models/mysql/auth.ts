@@ -104,9 +104,9 @@ export class AuthModel implements IAuthModel{
     }
     const result = validateUserOutput(rows[0]);
     if(!result.success){
-      throw new Error("Validatio error");
+      throw new Error("Validation error");
     } 
-    return result.output as UserOutput
+    return result.output;
   }
 
   /**
@@ -163,7 +163,6 @@ export class AuthModel implements IAuthModel{
       throw new Error("Internal validation error");
     } 
     return result.output as UserOutput
-    
   }
 
   /**
@@ -218,4 +217,28 @@ export class AuthModel implements IAuthModel{
       throw new Error("User already has this role");
     }
   }
+
+  /**
+   * Activates a user account and all of their comments.
+   * 
+   * Updates the `is_active` flag to `true` for both the user and their associated comments.
+   *
+   * @param {string} id - The ID of the user to activate.
+   * @returns {Promise<void>} Resolves when the user and their comments are activated.
+   * @throws {Error} If the user does not exist.
+   */
+  async activate(id: string): Promise<void> {
+    const [updateResult] = await connection.query(
+        `UPDATE user SET is_active = true WHERE id = UUID_TO_BIN(?);`, [id]
+    ) as [ResultSetHeader, any];
+
+    if (updateResult.affectedRows === 0) {
+      throw new Error("User not found");
+    }
+
+    await connection.query(
+      `UPDATE comment SET is_active = true WHERE user_id = UUID_TO_BIN(?);`, [id]
+    );
+  }
+
 }

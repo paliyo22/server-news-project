@@ -5,8 +5,7 @@ import type { Request, Response } from 'express';
  * Logs out a user by revoking their refresh token and clearing authentication cookies.
  * 
  * This function is responsible for invalidating the user's session by removing the refresh token 
- * from the database and clearing the `accessToken` and `refreshToken` cookies. It responds with a 
- * success message once the operation is completed.
+ * from the database and clearing the `accessToken` and `refreshToken` cookies.
  * 
  * @param {Request} req - The Express request object, which contains the user data from the authentication middleware.
  * @param {Response} res - The Express response object, used to send the response back to the client.
@@ -34,7 +33,6 @@ export const logOut = async (req: Request, res: Response, authModel: IAuthModel)
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
     });
-    res.status(200).json({ message: 'Logged out successfully' });
 }
 
 

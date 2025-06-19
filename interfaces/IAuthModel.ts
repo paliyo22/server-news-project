@@ -15,4 +15,5 @@ export interface IAuthModel {
     revokeToken(id: string): Promise<void>
     newPassword(id: string, oldPassword: string, newPassword: string): Promise<boolean>
     newRole(id: string, role: Role): Promise<void>
+    activate(id: string): Promise<void>
 }

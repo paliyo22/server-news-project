@@ -7,25 +7,18 @@ import { logOut} from "../services/endSession";
 import { getUserById } from "../services/finder";
 import { Role } from "../enum/role";
 
-/**
- * AuthController handles user authentication operations including registration,
- * login, logout, token refresh, password change, and role assignment.
- */
+
 export class AuthController {
-    /**
-     * Creates an instance of AuthController.
-     * @param authModel - Authentication model handling database logic.
-     */
+    
     constructor(private readonly authModel: IAuthModel) {}
 
     /**
-     * Handles successful authentication by generating access and refresh tokens,
-     * saving the refresh token, and setting cookies.
-     * 
-     * @private
-     * @param user - The authenticated user object.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the operation is complete.
+     * Handles successful authentication by generating JWT tokens,
+     * saving the refresh token, and sending both tokens in cookies.
+     *
+     * @param {UserOutput} user - The authenticated user.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     private async handleAuthSuccess(user: UserOutput, res: Response): Promise<void> {
         const jwtAccessExpiry = '15m';
@@ -64,12 +57,12 @@ export class AuthController {
     }
 
     /**
-     * Registers a new user if the provided data is valid and not already taken.
-     * Sends back access and refresh tokens in cookies upon success.
-     * 
-     * @param req - The HTTP request object containing user registration data.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the registration is complete.
+     * Registers a new user.
+     * Validates user input, creates the user, and logs them in automatically.
+     *
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     register = async (req: Request, res: Response): Promise<void> => {
         try {
@@ -105,67 +98,72 @@ export class AuthController {
         }
     }
 
+    
     /**
-     * Logs in a user with valid credentials.
-     * Sends back access and refresh tokens in cookies upon success.
-     * 
-     * @param req - The HTTP request object containing login credentials.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the login process is complete.
+     * Handles user login.
+     * Validates credentials, activates the account if needed, and sets cookies.
+     *
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     logIn = async (req: Request, res: Response): Promise<void> => {
+        const result = validateAuth(req.body);
+
+        if (!result.success) {
+            res.status(422).json({ errors: result.issues });
+            return;
+        }
+
         try {
-            const result = validateAuth(req.body);
-
-            if (!result.success) {
-                res.status(422).json({ errors: result.issues });
-                return;
-            }
-
             const user = await this.authModel.logIn(result.output);
-            if(!user){
-                res.status(401).json({ error: "Invalid email or password"})
+
+            if (!user) {
+                res.status(401).json({ error: "Invalid email or password" });
                 return;
             }
-            try {
-                await this.handleAuthSuccess(user, res);
-            } catch (err) {
-                throw new Error('Error loging in');
+
+            if (!user.is_active) {
+                try {
+                    await this.authModel.activate(user.id);
+                    user.is_active = true;
+                } catch (activationError) {
+                    res.status(500).json({ error: "Account could not be reactivated" });
+                    return;
+                }
             }
-            
+
+            await this.handleAuthSuccess(user, res);
 
         } catch (e) {
-            if (e instanceof Error) {
-                res.status(500).json({ error: e.message });
-            } else {
-                res.status(500).json({ error: "Internal Server Error" });
-            }
+            console.error("Login error:", e); // BORRAR 
+            res.status(500).json({ error: "Internal Server Error" });
         }
     }
 
     /**
-     * Logs out the user by removing stored tokens and clearing cookies.
-     * 
-     * @param req - The HTTP request object.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the logout process is complete.
+     * Logs out the user by revoking their refresh token and clearing cookies.
+     *
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     logOut = async (req: Request, res: Response): Promise<void> => {
         try{
             await logOut(req, res, this.authModel);
-            res.status(200);
+            res.status(200).json({ message: 'Logged out successfully' });
         } catch (e) {
             res.status(500).json({ error: "Internal Error"}); // Error al borrar el token
         }
     }
 
     /**
-     * Refreshes the user's access token using a valid refresh token.
-     * If the token is invalid or user is not found, clears cookies.
-     * 
-     * @param req - The HTTP request object containing the refresh token.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when a new token is issued.
+     * Refreshes authentication tokens.
+     * Validates the refresh token and re-authenticates the user.
+     *
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     refresh = async (req: Request, res: Response): Promise<void> => {
         const oldRefreshToken = (req as any).user
@@ -210,11 +208,12 @@ export class AuthController {
     }
 
     /**
-     * Updates the user's password if the old password is correct.
-     * 
-     * @param req - The HTTP request object containing old and new passwords.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the password is updated.
+     * Changes the user's password.
+     * Validates old and new passwords before updating.
+     *
+     * @param {Request} req - Express request object containing oldPass and newPass.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     newPassword = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user
@@ -243,11 +242,12 @@ export class AuthController {
     }
     
     /**
-     * Updates a user's role to a new valid role.
-     * 
-     * @param req - The HTTP request object containing the user ID and new role.
-     * @param res - The HTTP response object.
-     * @returns A Promise that resolves when the role is successfully changed.
+     * Updates the user's role.
+     * Validates role and user ID before assigning the new role.
+     *
+     * @param {Request} req - Express request object containing user ID and new role.
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
      */
     newRole = async (req: Request, res: Response): Promise<void> => {
         const {id, role} = req.body;
@@ -266,6 +266,8 @@ export class AuthController {
             }
         }
     }
+
+    
 }
 
 

@@ -6,24 +6,6 @@ import { validateUserOutput, type UserInput, type UserOutput } from "../../schem
 export class UserModel implements IUserModel{
 
   /**
-   * Deletes a comment if it belongs to the specified user.
-   * @param {string} commentId - ID of the comment to delete.
-   * @param {string} userId - ID of the user attempting the deletion.
-   * @returns {Promise<boolean>} True if deletion succeeded, false otherwise.
-   */
-  async deleteComment(commentId: string, userId: string): Promise<boolean> {
-    const [rows] = await connection.query(
-      `DELETE FROM comment 
-      WHERE (user_id = UUID_TO_BIN(?)) AND (id = UUID_TO_BIN(?));`,
-      [userId, commentId]
-    ) as [ResultSetHeader, any];
-    if(rows.affectedRows === 0){
-      return false;
-    }
-    return true;
-  }
-
-  /**
    * Removes a like from a news item by the specified user.
    * @param {string} userId - ID of the user.
    * @param {string} newsId - ID of the news item.
@@ -35,27 +17,8 @@ export class UserModel implements IUserModel{
       WHERE (user_id = UUID_TO_BIN(?)) AND (news_id = UUID_TO_BIN(?));`,
       [userId, newsId]
     ) as [ResultSetHeader, any];
-    if(rows.affectedRows === 0){
-      return false;
-    }
-    return true;
-  }
 
-  /**
-   * Adds a comment to a news item, optionally as a reply to a parent comment.
-   * @param {string} userId - ID of the user adding the comment.
-   * @param {string} newsId - ID of the news item.
-   * @param {string} comment - Content of the comment.
-   * @param {string} [parentId] - Optional ID of the parent comment.
-   */
-  async addComment(userId: string, newsId: string, comment: string, parentId?: string): Promise<void> {
-    
-    await connection.query(
-      `INSERT INTO comment (user_id, news_id, parent_comment_id, content)
-      VALUES (UUID_TO_BIN(?), UUID_TO_BIN(?), UUID_TO_BIN(?), ?);`,
-      [userId, newsId, parentId ?? null, comment]
-    ) 
-    
+    return rows.affectedRows > 0;
   }
 
   /**
@@ -88,6 +51,7 @@ export class UserModel implements IUserModel{
     const [rows] = await connection.query(
       `DELETE FROM user WHERE is_active = false;`
     ) as [ResultSetHeader, any];
+
     return rows.affectedRows;
   }
 
@@ -112,7 +76,6 @@ export class UserModel implements IUserModel{
         subscription: 'subscription',
         is_active: 'is_active',
         created: 'created',
-        refresh_token: 'refresh_token'
     };
 
     const fields = Object.entries(input)
@@ -133,27 +96,26 @@ export class UserModel implements IUserModel{
     const [rows] = await connection.query(
         `SELECT BIN_TO_UUID(u.id) AS id, u.user_name AS name, u.lastname, u.birthday, u.username,
           u.email, u.subscription, r.name AS role, u.is_active,
-          u.created, u.refresh_token
+          u.created
         FROM user u 
         LEFT JOIN role r on r.id = u.user_role 
-        WHERE u.id = UUID_TO_BIN(?);`,
-        [id]
+        WHERE u.id = UUID_TO_BIN(?);`,[id]
     ) as [any[], any];
 
     const result = validateUserOutput(rows[0]);
     if(!result.success){
       throw new Error("Internal validation error");
     } 
-    return result.output as UserOutput
+    return result.output;
   }
 
   /**
    * Retrieves a paginated list of all users.
    * @param {number} limit - Maximum number of users to retrieve.
    * @param {number} offset - Number of users to skip.
-   * @returns {Promise<UserOutput[] | null>} Array of users or null if none found.
+   * @returns {Promise<UserOutput[]>} Array of users or null if none found.
    */
-  async getAll(limit: number, offset: number): Promise<UserOutput[] | null> {
+  async getAll(limit: number, offset: number): Promise<UserOutput[]> {
     const [rows] = await connection.query(`
       SELECT BIN_TO_UUID(u.id) AS id, u.user_name AS name, u.lastname, u.birthday, u.username,
       u.email, u.password, u.subscription, r.name AS role, u.is_active,
@@ -163,31 +125,15 @@ export class UserModel implements IUserModel{
       ORDER BY u.lastname, u.user_name 
       LIMIT ? OFFSET ?;`,[limit, offset]
       ) as [any[], any];
-      if(rows.length === 0) return null;
+      if(rows.length === 0){
+        throw new Error('Internal query error');
+      }
 
       const users = rows.map(validateUserOutput)
         .filter(result => result.success)
         .map(result => result.output as UserOutput);
  
     return users;
-  }
-  
-  /**
-   * Toggles the active status of a user.
-   * @param {string} id - ID of the user.
-   * @returns {Promise<boolean>} New active status (true = active, false = inactive).
-   */
-  async status(id: string): Promise<boolean> {
-    await connection.query(
-        `UPDATE user SET is_active = (NOT is_active) WHERE id = UUID_TO_BIN(?);`, [id]
-    ) as [ResultSetHeader, any];
-    const [result] = await connection.query(
-        `SELECT is_active FROM user WHERE id = UUID_TO_BIN(?);`, [id]
-    ) as [any[], any];
-    if (result[0].is_active === 0) {
-        return false;
-    }
-    return true;
   }
   
   /**
@@ -198,19 +144,43 @@ export class UserModel implements IUserModel{
    * @throws Throws error if query fails.
    */
   async isLiked(userId: string, newsId: string): Promise<boolean> {
-    try{
-      const [result] = await connection.query(
-        `SELECT * 
-        FROM likes_x_news 
-        WHERE user_id = UUID_TO_BIN(?) AND news_id = UUID_TO_BIN(?);`,[userId, newsId]
-      ) as [any[], any]
-      if(result.length === 0){
-        return false
-      }
-      return true;
-    }catch (err: any) {
-        throw err; 
+    const [result] = await connection.query(
+      `SELECT * 
+      FROM likes_x_news 
+      WHERE user_id = UUID_TO_BIN(?) AND news_id = UUID_TO_BIN(?);`,[userId, newsId]
+    ) as [any[], any]
+
+    if(result.length === 0){
+      return false
     }
+
+    return true;
+  }
+
+  /**
+   * Deactivates a user account and all their associated comments.
+   *
+   * - Sets the `is_active` field of the specified user to `false`.
+   * - Also sets `is_active` to `false` for all comments made by the user.
+   * - Throws an error if the user does not exist.
+   *
+   * @param {string} id - The UUID of the user to deactivate.
+   * @returns {Promise<void>} Resolves when the operation completes.
+   * @throws {Error} If no user was found with the provided ID.
+   */
+  async delete(id: string): Promise<void> {
+
+    const [rows] = await connection.query(
+      `UPDATE user SET is_active = false WHERE id = UUID_TO_BIN(?);`, [id]
+    ) as [ResultSetHeader, any];
+
+    if(rows.affectedRows === 0){
+      throw new Error('User not found');
+    }
+
+    await connection.query(
+      `UPDATE comment SET is_active = false WHERE user_id = UUID_TO_BIN(?);`, [id]
+    );
   }
   
 }

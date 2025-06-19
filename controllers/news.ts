@@ -5,43 +5,36 @@ import { Category, isCategory } from '../enum/category';
 import { apiData, delay } from '../services/apiNews';
 import { saveUrlImage } from '../services/saveImageUrl'
 
-/**
- * NewsController handles operations related to news articles, including fetching,
- * filtering, updating visibility status, loading external news, and managing comments.
- */
+
 export class NewsController {
 
-    /**
-     * Creates an instance of NewsController.
-     * @param newsModel - A data access layer implementing the INewsModel interface.
-     */
+
     constructor(private readonly newsModel: INewsModel) {}
     
     /**
-     * Returns visible (active) news with optional pagination.
+     * Retrieves active news with optional pagination.
      * 
-     * @param req - HTTP request object with optional `limit` and `offset` query params.
-     * @param res - HTTP response object to send the result.
-     */
+     * @route GET /news
+     * @param {Request} req - Express request object (supports `limit` and `offset` query parameters).
+     * @param {Response} res - Express response object containing the paginated news.
+     * @returns {Promise<void>}
+    */
     home = async (req: Request, res: Response): Promise<void> => {
         
         let limit = parseInt(req.query.limit as string) || 10;
-        if(limit<0){
+        if(limit < 0){
             limit = 10;
         }
 
         let offset = parseInt(req.query.offset as string) || 0;
-        if(offset<0){
+        if(offset < 0){
             offset = 0;
         }
 
         try {
             const news = await this.newsModel.getNews(limit, offset);
-            if(news === null){
-                res.status(404).json({ error: 'No featured news found' });    
-                return;
-            }
-            res.status(200).json(news)
+            
+            res.status(200).json({ news });
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -52,24 +45,24 @@ export class NewsController {
     }
 
     /**
-     * Returns a list of featured news with an optional limit.
+     * Retrieves most liked news in the past month (featured), with optional limit.
      * 
-     * @param req - HTTP request object with optional `limit` query param.
-     * @param res - HTTP response object to send the result.
-     */
+     * @route GET /news/featured
+     * @param {Request} req - Express request object (supports optional `limit` query parameter).
+     * @param {Response} res - Express response object containing featured news.
+     * @returns {Promise<void>}
+    */
     featuredNews = async (req: Request, res: Response): Promise<void> => {
-        try {
+
             let limit = parseInt(req.query.limit as string) || config.FeaturedLimit;
             if(limit<0){
                 limit = config.FeaturedLimit;
             } 
-            const news = await this.newsModel.featuredNews(limit);
+
+        try {
+            const news = await this.newsModel.getFeatured(limit);
             
-            if(news === null){
-                res.status(404).json({ error: 'No featured news found' });    
-                return;
-            }
-            res.status(200).json(news)
+            res.status(200).json({ news });
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -80,31 +73,31 @@ export class NewsController {
     }
 
     /**
-     * Fetches a single news item by its ID. If it has sub-news, returns them as well.
+     * Retrieves a specific news item by ID, including subnews if available.
      * 
-     * @param req - HTTP request object containing the `id` param.
-     * @param res - HTTP response object to send the result.
-     */
+     * @route GET /news/:id
+     * @param {Request} req - Express request object (expects `id` param).
+     * @param {Response} res - Express response object containing the news item and optional subnews.
+     * @returns {Promise<void>}
+    */
     getById = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
-        if (typeof id !== 'string') {
+
+        if (!id || typeof id !== 'string' || id.trim() === '') {
             res.status(400).json({ error: 'Invalid or missing id parameter' });
             return;
         }
+
         try{
             const news = await this.newsModel.getById(id);
-            if(news === null){
-                res.status(404).json({ error: 'No featured news found' });    
-                return;
-            }
-            
+                        
             if(news.hasSubnews){
                 const subNews = await this.newsModel.getSubnews(id);
                 res.status(200).json({news, subNews})
                 return;    
             }
             
-            res.status(200).json({news})
+            res.status(200).json({ news })
         }catch(e){
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -115,48 +108,29 @@ export class NewsController {
     }
     
     /**
-     * Retrieves all comments associated with a specific news article.
+     * Manually fetches and imports news data from external APIs by category.
+     * Resolves redirection issues in image URLs and enriches the dataset before saving.
      * 
-     * @param req - HTTP request object containing the `id` param.
-     * @param res - HTTP response object to send the result.
-     */
-    getNewsComment = async (req: Request, res: Response): Promise<void> => {
-        const id = req.params.id;
-        if (typeof id !== 'string') {
-            res.status(400).json({ error: 'Invalid or missing id parameter' });
-            return;
-        }
-        try {
-            const comments = await this.newsModel.getComments(id);
-            res.status(200).json(comments);
-        } catch (e) {
-            if (e instanceof Error) {
-                res.status(500).json({ error: e.message });
-            } else {
-                res.status(500).json({ error: "Internal Server Error" });
-            }
-        }
-    }
-
-    /**
-     * Fetches and saves news from an external API source by category.
-     * Includes delay between requests and tracks total processed items.
-     * 
-     * @param req - HTTP request object.
-     * @param res - HTTP response object to send the result.
-     */
+     * @route POST /news/fetch
+     * @access Admin only
+     * @param {Request} req - Express request object (no body expected).
+     * @param {Response} res - Express response object.
+     * @returns {Promise<void>}
+    */
     fetchApi = async (req: Request, res: Response): Promise<void> => {
         try{
             let aux = 0;
+
             for(const category of Object.values(Category)) {
                 
                 const newsArray = await apiData(category); //service
                 const news = await saveUrlImage(newsArray); //service
-                await this.newsModel.saveNews(news, category);
+                await this.newsModel.addNewsList(news, category);
                 aux +=  news.items.length;
                 await delay(1000);
             }
-            res.status(200).json({ succes: `✅ ${aux} noticias procesadas con exito.`}) 
+
+            res.status(200).json({ succes: `${aux} news successfully save` }) 
         }catch(e){
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -167,25 +141,30 @@ export class NewsController {
     }
 
     /**
-     * Toggles the visibility status of a news item by its ID.
+     * Toggles the visibility (active status) of a news item by its ID.
      * 
-     * @param req - HTTP request object containing the `id` param.
-     * @param res - HTTP response object.
-     */
+     * @route PATCH /news/:id/status
+     * @param {Request} req - Express request object (expects `id` param).
+     * @param {Response} res - Express response object with success or error status.
+     * @returns {Promise<void>}
+    */
     changeStatus = async (req: Request, res: Response): Promise<void> => {
-        const id = req.params.id
-        if(typeof id !== 'string'){
+        const id = req.params.id;
+
+        if(!id || typeof id !== 'string' || id.trim() === ''){
             res.status(400).json({ error: 'Invalid or missing id parameter' });
             return;
         }
+
         try {
-            const result = await this.newsModel.status(id);
+            const result = await this.newsModel.setStatus(id);
+
             if(!result){
                 res.status(404).json({ error: 'Not found' });
                 return;
             }
-            res.status(200).end();
-            
+
+            res.status(200).json({ success: true });    
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -194,18 +173,21 @@ export class NewsController {
             }
         }
     }
-
     
     /**
-     * Deletes inactive news items from the database.
+     * Deletes all inactive news entries from the database.
      * 
-     * @param req - HTTP request object.
-     * @param res - HTTP response object with count of deleted items.
-     */
+     * @route DELETE /news/inactive
+     * @param {Request} req - Express request object.
+     * @param {Response} res - Express response object with count of deleted entries.
+     * @returns {Promise<void>}
+    */
     clean = async (req: Request, res: Response): Promise<void> => {
         try {
+    
             const deletedCount = await this.newsModel.clean();
             res.status(200).json({ success: true, deleted: deletedCount });
+
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -216,29 +198,29 @@ export class NewsController {
     }
    
     /**
-     * Retrieves a list of inactive (not visible) news items with pagination.
+     * Retrieves paginated list of inactive news entries.
      * 
-     * @param req - HTTP request object with optional `limit` and `offset` query params.
-     * @param res - HTTP response object to send the result.
-     */
-    inactive = async(req: Request, res: Response): Promise<void> => {
+     * @route GET /news/inactive
+     * @param {Request} req - Express request object (supports `limit` and `offset` query parameters).
+     * @param {Response} res - Express response object containing paginated inactive news.
+     * @returns {Promise<void>}
+    */
+    getInactive = async(req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
+        let offset = parseInt(req.query.offset as string) || 0;
+        
         if(limit<0){
             limit = 10;
         }
 
-        let offset = parseInt(req.query.offset as string) || 0;
         if(offset<0){
             offset = 0;
         }
 
         try {
             const news = await this.newsModel.getInactive(limit, offset);
-            if(news === null){
-                res.status(404).json({ error: 'No featured news found' });    
-                return;
-            }
-            res.status(200).json(news)
+
+            res.status(200).json({ news })
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -247,64 +229,37 @@ export class NewsController {
             }
         }
     }
-    
-    /**
-     * Gets replies (child comments) for a given parent comment ID.
-     * 
-     * @param req - HTTP request object containing the `id` param (comment ID).
-     * @param res - HTTP response object with list of replies.
-     */
-    replies = async (req: Request, res: Response): Promise<void> => {
-        const commentId = req.params.id;
-        try{
-            if(!commentId || typeof commentId !== 'string' || commentId.trim() === ''){
-                res.status(400).json({ error: 'bad request' });
-                return;
-            }
-            const result = await this.newsModel.getChildComments(commentId);
-            if(!result){
-                res.status(404).json({ error: 'No featured comments found' });    
-                return;
-            }
-            res.status(200).json(result);
-        }catch(e){
-            if (e instanceof Error) {
-                res.status(500).json({ error: e.message });
-            } else {
-                res.status(500).json({ error: "Internal Server Error" });
-            }
-        }   
-    }
 
     /**
-     * Fetches news by category with pagination support.
+     * Retrieves active news filtered by category with pagination.
      * 
-     * @param req - HTTP request object containing the `category` param, and optional `limit` and `offset` query params.
-     * @param res - HTTP response object to send the result.
-     */
+     * @route GET /news/category/:category
+     * @param {Request} req - Express request object (expects `category` param and optional `limit` and `offset` query parameters).
+     * @param {Response} res - Express response object containing filtered news by category.
+     * @returns {Promise<void>}
+    */
     getCategory = async (req: Request, res: Response): Promise<void> => {
         const category = req.params.category;
         let limit = parseInt(req.query.limit as string) || 10;
         let offset = parseInt(req.query.offset as string) || 0;
 
-        if (typeof category !== 'string' || !isCategory(category)) {
+        if (!category || typeof category !== 'string' || !isCategory(category)) {
             res.status(400).json({ error: 'Invalid or missing category parameter' });
             return;
         }
+
         if(limit<0){
             limit = 10;
         }      
+
         if(offset<0){
             offset = 0;
         }
 
         try {
             const news = await this.newsModel.getByCategory(limit, offset, category);
-            if(news === null){
-                res.status(404).json({ error: 'No featured news found' });    
-                return;
-            }
-            res.status(200).json(news)
+            
+            res.status(200).json({ news })
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -312,5 +267,6 @@ export class NewsController {
                 res.status(500).json({ error: "Internal Server Error" });
             }
         }
-    }    
+    }  
+
 }
