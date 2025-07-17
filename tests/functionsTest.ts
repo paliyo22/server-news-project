@@ -29,11 +29,9 @@ const mockResponse = (): Response => {
 
 const run = async () => {
     try {
-        const aux = new UserController(new UserModel(), new AuthModel());
-        await aux.update(
-            mockRequest({}, {}, 
-                {"password": "securePassword123"}, 
-                {"id": "276a47f6-452b-11f0-ba24-c87f54681d88"}),
+        const aux = new NewsController(new NewsModel());
+        await aux.fetchApi(
+            mockRequest(),
             mockResponse()
         );
     } catch (e) {

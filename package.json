@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "start": "bun run index.ts",
-    "dev": "bun run index.ts"
+    "dev": "bun run index.ts",
+    "migrate": "bun run dbStructure/migrationToLocal.ts",
+    "mock": "bun run tests/functionsTest.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
@@ -37,6 +39,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.1",
+    "uuid": "^11.1.0",
     "valibot": "^1.1.0"
   }
 }

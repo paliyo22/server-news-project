@@ -31,11 +31,7 @@ export class CommentController {
 
         try {
             const comments = await this.commentModel.getComments(id);
-            if(comments.length === 0){
-               res.status(404).json({ error: 'No featured comments found' });
-               return;
-            }
-            res.status(200).json(comments);
+            res.status(200).json({comments});
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -63,13 +59,13 @@ export class CommentController {
                 return;
             }
 
-            const result = await this.commentModel.getReplies(commentId);
-            if(result.length === 0){
+            const comment = await this.commentModel.getReplies(commentId);
+            if(comment.length === 0){
                 res.status(404).json({ error: 'No featured comments found' });    
                 return;
             }
 
-            res.status(200).json(result);
+            res.status(200).json({ comment });
         }catch(e){
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -99,15 +95,17 @@ export class CommentController {
             res.status(400).json({ error: 'Bad request' });
             return;
         }
-        if(parentCommentId && (typeof parentCommentId !== "string" || parentCommentId.trim() === "")){
-            res.status(400).json({ error: 'Bad request' });
-            return;
-        }
-       
+               
         try {
-            const result = await this.commentModel.addComment(token.id, newsId, comment, parentCommentId);
+            let result;
+            if(!parentCommentId){
+                result = await this.commentModel.addComment(token.id, newsId, comment);
+            }else{
+                result = await this.commentModel.addComment(token.id, newsId, comment, parentCommentId);
+            }
             if(!result){
-                res.status(502).json({ error: "Error saving comment"})
+                res.status(502).json({ error: "Error saving comment"});
+                return;
             }
             res.status(200).json({ success: true });
         } catch (e) {
@@ -166,13 +164,13 @@ export class CommentController {
         
         try {
             const result = await this.commentModel.update(token.id, commentId, comment);
-            res.status(200).json({comment: result});             
-        } catch (e) {
-            if (e instanceof Error) {
-                res.status(500).json({ error: e.message });
-            } else {
-                res.status(500).json({ error: "Internal Server Error" });
+            if(!result){
+                res.status(404).json({ error: "Comment not found" });
+                return;
             }
+            res.status(200).json({ success: true });             
+        } catch (e) {
+            res.status(500).json({ error: "Internal Server Error" });
         }
     }
 

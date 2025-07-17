@@ -10,6 +10,8 @@ import type { NewsImput, NewsOutput, CommentSchema, CommentOutput } from "../sch
 export interface INewsModel {
     getNews(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number }> 
     getFeatured(limit: number): Promise<NewsOutput[]>
+    checkFetchDate(): Promise<void>
+    updateFetchDate(): Promise<void>
     addNewsList(news: NewsImput, category: Category): Promise<void>
     getById(id: string): Promise<NewsOutput>
     getSubnews(id:string): Promise<NewsOutput[]>

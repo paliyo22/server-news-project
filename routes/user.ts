@@ -30,6 +30,5 @@ export const userRoutes = (
     userRouter.delete('/like/:id', authenticateToken, userController.deleteLike);
     userRouter.get('/:id', authenticateToken, authorizeAdmin, userController.getById);
     
-    
     return userRouter;
 } 

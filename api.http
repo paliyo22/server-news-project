@@ -20,9 +20,16 @@ GET http://localhost:1234/news/978b63e5-4444-11f0-ba24-c87f54681d88
 Content-Type: application/json
 
 ###
-POST http://localhost:1234/news/replies
+POST http://localhost:1234/comment/likes/batch
 Content-Type: application/json
 
 {
-    "commentId": "c15e7c73-4604-11f0-ba24-c87f54681d88"
+  "comments": [
+    "33a06423-60d6-11f0-a47f-c87f54681d88",
+    "7bdbc0ae-60db-11f0-a47f-c87f54681d88",
+    "3e6bbc66-60f3-11f0-a47f-c87f54681d88"
+  ]
 }
+
+###
+GET http://localhost:1234/comment/replies/33a06423-60d6-11f0-a47f-c87f54681d88

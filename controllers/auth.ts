@@ -42,13 +42,13 @@ export class AuthController {
         res
             .cookie('accessToken', accessToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: false, //process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
                 maxAge: jwtAccessExpiryMs
             })
             .cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: false, //process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
                 maxAge: jwtRefreshExpiryMs
             })
@@ -151,7 +151,7 @@ export class AuthController {
     logOut = async (req: Request, res: Response): Promise<void> => {
         try{
             await logOut(req, res, this.authModel);
-            res.status(200).json({ message: 'Logged out successfully' });
+            res.status(200).json({ success: true });
         } catch (e) {
             res.status(500).json({ error: "Internal Error"}); // Error al borrar el token
         }
@@ -231,7 +231,7 @@ export class AuthController {
                 res.status(400).json({ errors: "Rejected" });
                 return;
             }
-            res.status(200).json({ message: "Password updated successfully" });
+            res.status(200).json({ success: true });
         } catch (e) {
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
@@ -257,7 +257,7 @@ export class AuthController {
         }
         try {
             await this.authModel.newRole(id, role)
-            res.status(200).json({ message: "Role changed successfully" });
+            res.status(200).json({ success: true });
         } catch (e) {
             if (e instanceof Error) {
                 res.status(400).json({ error: e.message });

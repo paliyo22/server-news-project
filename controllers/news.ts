@@ -8,17 +8,8 @@ import { saveUrlImage } from '../services/saveImageUrl'
 
 export class NewsController {
 
-
     constructor(private readonly newsModel: INewsModel) {}
     
-    /**
-     * Retrieves active news with optional pagination.
-     * 
-     * @route GET /news
-     * @param {Request} req - Express request object (supports `limit` and `offset` query parameters).
-     * @param {Response} res - Express response object containing the paginated news.
-     * @returns {Promise<void>}
-    */
     home = async (req: Request, res: Response): Promise<void> => {
         
         let limit = parseInt(req.query.limit as string) || 10;
@@ -44,14 +35,6 @@ export class NewsController {
         }
     }
 
-    /**
-     * Retrieves most liked news in the past month (featured), with optional limit.
-     * 
-     * @route GET /news/featured
-     * @param {Request} req - Express request object (supports optional `limit` query parameter).
-     * @param {Response} res - Express response object containing featured news.
-     * @returns {Promise<void>}
-    */
     featuredNews = async (req: Request, res: Response): Promise<void> => {
 
             let limit = parseInt(req.query.limit as string) || config.FeaturedLimit;
@@ -72,14 +55,6 @@ export class NewsController {
         }
     }
 
-    /**
-     * Retrieves a specific news item by ID, including subnews if available.
-     * 
-     * @route GET /news/:id
-     * @param {Request} req - Express request object (expects `id` param).
-     * @param {Response} res - Express response object containing the news item and optional subnews.
-     * @returns {Promise<void>}
-    */
     getById = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
 
@@ -107,20 +82,10 @@ export class NewsController {
         }
     }
     
-    /**
-     * Manually fetches and imports news data from external APIs by category.
-     * Resolves redirection issues in image URLs and enriches the dataset before saving.
-     * 
-     * @route POST /news/fetch
-     * @access Admin only
-     * @param {Request} req - Express request object (no body expected).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-    */
     fetchApi = async (req: Request, res: Response): Promise<void> => {
         try{
             let aux = 0;
-
+            await this.newsModel.checkFetchDate(); //se puede mejorar ya que no es 500
             for(const category of Object.values(Category)) {
                 
                 const newsArray = await apiData(category); //service
@@ -129,7 +94,7 @@ export class NewsController {
                 aux +=  news.items.length;
                 await delay(1000);
             }
-
+            await this.newsModel.updateFetchDate();
             res.status(200).json({ succes: `${aux} news successfully save` }) 
         }catch(e){
             if (e instanceof Error) {
@@ -140,14 +105,6 @@ export class NewsController {
         }
     }
 
-    /**
-     * Toggles the visibility (active status) of a news item by its ID.
-     * 
-     * @route PATCH /news/:id/status
-     * @param {Request} req - Express request object (expects `id` param).
-     * @param {Response} res - Express response object with success or error status.
-     * @returns {Promise<void>}
-    */
     changeStatus = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
 
@@ -174,14 +131,6 @@ export class NewsController {
         }
     }
     
-    /**
-     * Deletes all inactive news entries from the database.
-     * 
-     * @route DELETE /news/inactive
-     * @param {Request} req - Express request object.
-     * @param {Response} res - Express response object with count of deleted entries.
-     * @returns {Promise<void>}
-    */
     clean = async (req: Request, res: Response): Promise<void> => {
         try {
     
@@ -197,14 +146,6 @@ export class NewsController {
         }
     }
    
-    /**
-     * Retrieves paginated list of inactive news entries.
-     * 
-     * @route GET /news/inactive
-     * @param {Request} req - Express request object (supports `limit` and `offset` query parameters).
-     * @param {Response} res - Express response object containing paginated inactive news.
-     * @returns {Promise<void>}
-    */
     getInactive = async(req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
         let offset = parseInt(req.query.offset as string) || 0;
@@ -230,14 +171,6 @@ export class NewsController {
         }
     }
 
-    /**
-     * Retrieves active news filtered by category with pagination.
-     * 
-     * @route GET /news/category/:category
-     * @param {Request} req - Express request object (expects `category` param and optional `limit` and `offset` query parameters).
-     * @param {Response} res - Express response object containing filtered news by category.
-     * @returns {Promise<void>}
-    */
     getCategory = async (req: Request, res: Response): Promise<void> => {
         const category = req.params.category;
         let limit = parseInt(req.query.limit as string) || 10;

@@ -7,97 +7,89 @@ import { validateOutputNews, type NewsImput, type NewsOutput } from "../../schem
 
 export class NewsModel implements INewsModel{
 
-  /**
-   * Inserts a genre if it doesn't exist and returns its ID.
-   * @param {Category} category - The genre name.
-   * @returns {Promise<number>} Genre ID.
-   */
   private async getOrCreateGenreId(category: Category): Promise<number> {
-      
     const [genreRows] = await connection.query(
-      'SELECT id FROM genre WHERE name = ?',
-      [category.toLowerCase()]
+        'SELECT id FROM genre WHERE name = ?',
+        [category.toLowerCase()]
     ) as [any[], any];
 
     let genreId = genreRows[0]?.id;
 
     if (!genreId) {
-      await connection.query(
-        `INSERT INTO genre (name) VALUES (?);`,
-        [category.toLowerCase()]
-      );
+        await connection.query(
+            `INSERT INTO genre (name) VALUES (?);`,
+            [category.toLowerCase()]
+        );
 
-      const [retryRows] = await connection.query(
-        'SELECT id FROM genre WHERE name = ?',
-        [category.toLowerCase()]
-      ) as [any[], any];
+        const [retryRows] = await connection.query(
+            'SELECT id FROM genre WHERE name = ?',
+            [category.toLowerCase()]
+        ) as [any[], any];
 
-      genreId = retryRows[0]?.id;
+        genreId = retryRows[0]?.id;
     }
     return genreId;
   }
 
-  /**
-   * Inserts a news item into the database.
-   * @param {any} i - Object containing news data.
-   * @param {number} genreId - Genre ID for the news.
-   * @param {string} uuid - Generated UUID for the news.
-   */
-  private async insertNewsItem(i: any, genreId: number, uuid: string) {
-      await connection.query(
-          `INSERT IGNORE INTO news (
-              id, created, title, snippet, thumbnail, thumbnail_proxied,
-              subnews, has_subnews, news_url, publisher, news_genre, image_url
-          ) VALUES (UUID_TO_BIN("${uuid}"), FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ${genreId}, ?);`,
-          [
-              Math.floor(Number(i.timestamp) / 1000), i.title, i.snippet,
-              i.images?.thumbnail ?? null, i.images?.thumbnailProxied ?? null,
-              null, i.hasSubnews, i.newsUrl, i.publisher, i.image_url ?? null
-          ]
-      );
+  private async insertNewsItem(i: any, genreId: number, uuid: string, conn: any) {
+    await conn.query(
+      `INSERT IGNORE INTO news (
+          id, created, title, snippet, thumbnail, thumbnail_proxied,
+          subnews, has_subnews, news_url, publisher, news_genre, image_url
+      ) VALUES (UUID_TO_BIN(?), FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+          uuid,
+          Math.floor(Number(i.timestamp) / 1000),
+          i.title,
+          i.snippet,
+          i.images?.thumbnail ?? null,
+          i.images?.thumbnailProxied ?? null,
+          null,
+          i.hasSubnews,
+          i.newsUrl,
+          i.publisher,
+          genreId,
+          i.image_url ?? null
+      ]
+    );
   }
 
-  /**
-   * Inserts related subnews items linked to a parent news.
-   * @param {any[]} subnews - Array of subnews items.
-   * @param {number} genreId - Genre ID.
-   * @param {string} parentUuid - UUID of the parent news item.
-   */
-  private async insertSubnews(subnews: any[], genreId: number, parentUuid: string) {
-      for (const e of subnews) {
-          try {
-              await connection.query(
-                  `INSERT INTO news (
-                      created, title, snippet, thumbnail, thumbnail_proxied,
-                      subnews, has_subnews, news_url, publisher, news_genre, image_url
-                  ) VALUES (FROM_UNIXTIME(?), ?, ?, ?, ?, UUID_TO_BIN("${parentUuid}"), ?, ?, ?, ${genreId}, ?);`,
-                  [
-                      Math.floor(Number(e.timestamp) / 1000), e.title, e.snippet,
-                      e.images?.thumbnail ?? null, e.images?.thumbnailProxied ?? null,
-                      false, e.newsUrl, e.publisher, e.image_url ?? null
-                  ]
-              );
-          } catch (err: any) {
-              if (err.code === 'ER_DUP_ENTRY') {
-                  await connection.query(
-                      `UPDATE news SET subnews = UUID_TO_BIN("${parentUuid}") WHERE news_url = ?;`,
-                      [e.newsUrl]
-                  );
-                  continue;
-              } else {
-                  throw err;
-              }
-          }
-      }
+  private async insertSubnews(subnews: any[], genreId: number, parentUuid: string, conn: any) {
+    for (const e of subnews) {
+        try {
+            await conn.query(
+                `INSERT INTO news (
+                    created, title, snippet, thumbnail, thumbnail_proxied,
+                    subnews, has_subnews, news_url, publisher, news_genre, image_url
+                ) VALUES (FROM_UNIXTIME(?), ?, ?, ?, ?, UUID_TO_BIN(?), ?, ?, ?, ?, ?);`,
+                [
+                    Math.floor(Number(e.timestamp) / 1000),
+                    e.title,
+                    e.snippet,
+                    e.images?.thumbnail ?? null,
+                    e.images?.thumbnailProxied ?? null,
+                    parentUuid,
+                    false,
+                    e.newsUrl,
+                    e.publisher,
+                    genreId,
+                    e.image_url ?? null
+                ]
+            );
+        } catch (err: any) {
+            if (err.code === 'ER_DUP_ENTRY') {
+                await conn.query(
+                    `UPDATE news SET subnews = UUID_TO_BIN(?) WHERE news_url = ?;`,
+                    [parentUuid, e.newsUrl]
+                );
+                continue;
+            } else {
+                throw err;
+            }
+        }
+    }
   }
 
-  /**
-   * Retrieves a paginated list of active news items.
-   * @param {number} limit - Maximum number of results.
-   * @param {number} offset - Number of results to skip.
-   * @returns {Promise<{ data: NewsOutput[], total: number }>} News data and total count.
-   * @throws {Error} On connection or validation failure.
-   */
   async getNews(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number }> {
     
     const [rows] = await connection.query(
@@ -114,7 +106,7 @@ export class NewsModel implements INewsModel{
       [limit, offset]
     ) as [any[], any];
     if (rows.length === 0) {
-      throw new Error('Error fetching news');   
+      return {data: [], total: 0};   
     }
     const total = rows[0].total;
     const data: NewsOutput[] = rows.map(validateOutputNews)
@@ -126,12 +118,6 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
 
-  /**
-   * Retrieves featured news with most likes in the past month.
-   * @param {number} limit - Maximum number of results.
-   * @returns {Promise<NewsOutput[]>} List of featured news.
-   * @throws {Error} On validation or connection failure.
-   */
   async getFeatured(limit: number): Promise<NewsOutput[]> {
     
     const [rows] = await connection.query(
@@ -159,12 +145,6 @@ export class NewsModel implements INewsModel{
     return news;
   }
   
-  /**
-   * Retrieves a news item by its ID.
-   * @param {string} id - UUID of the news item.
-   * @returns {Promise<NewsOutput>} The news item.
-   * @throws {Error} On validation or connection failure.
-   */
   async getById(id: string): Promise<NewsOutput> {
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(n.id) AS id, n.created AS timestamp, n.title, 
@@ -190,12 +170,6 @@ export class NewsModel implements INewsModel{
     return result.output as NewsOutput;
   }
 
-  /**
-   * Retrieves subnews items related to a parent news item.
-   * @param {string} id - UUID of the parent news item.
-   * @returns {Promise<NewsOutput[]>} List of subnews.
-   * @throws {Error} On validation or connection failure.
-   */
   async getSubnews(id:string): Promise<NewsOutput[]> {
 
     const [rows] = await connection.query(
@@ -223,13 +197,7 @@ export class NewsModel implements INewsModel{
     return news;
   }
 
-  /**
-   * Toggles the active status of a news item.
-   * @param {string} id - UUID of the news item.
-   * @returns {Promise<boolean>} True if the status was changed successfully.
-   */
   async setStatus(id: string): Promise<boolean> {
-
     const [result] = await connection.query(
         `UPDATE news SET is_active = (NOT is_active) WHERE id = UUID_TO_BIN(?);`, [id]
     ) as [ResultSetHeader, any];
@@ -241,10 +209,6 @@ export class NewsModel implements INewsModel{
     return true;
   }
 
-  /**
-   * Deletes all inactive news items.
-   * @returns {Promise<number>} Number of deleted news items.
-   */
   async clean(): Promise<number> {
     
     const [result] = await connection.query(
@@ -254,49 +218,82 @@ export class NewsModel implements INewsModel{
     return result.affectedRows;
   }
 
-  /**
-   * Saves a batch of news items with their category.
-   * @param {NewsImput} news - News data to save.
-   * @param {Category} category - Category of the news.
-   * @throws {Error} On transaction failure.
-   */
+  async checkFetchDate(): Promise<void> {
+    const [rows] = await connection.query(
+      `SELECT fecha FROM last_pull WHERE id = 1;`
+    ) as [any[], any];
+
+    if (!rows.length) {
+      throw new Error("Failed to retrieve date");
+    }
+
+    const lastPullDate = rows[0].fecha instanceof Date
+      ? rows[0].fecha
+      : new Date(rows[0].fecha);
+
+    const now = new Date();
+    const diffMs = now.getTime() - lastPullDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 10) {
+      const daysRemaining = Math.ceil(10 - diffDays);
+      throw new Error(`Can't do that for another ${daysRemaining} days`);
+    }  
+  }
+
+  async updateFetchDate(): Promise<void> {
+
+    const [rows] = await connection.query(
+      'UPDATE last_pull SET fecha = NOW() WHERE id = 1;'
+    ) as [ResultSetHeader, any];
+
+    if(!rows.affectedRows){
+      throw new Error("Failed to update date");
+    } 
+  }
+  
   async addNewsList(news: NewsImput, category: Category): Promise<void> {
+    const conn = await connection.getConnection();
     try {
-      await connection.beginTransaction();
+        await conn.beginTransaction();
 
-      const genreId = await this.getOrCreateGenreId(category);
+        const genreId = await this.getOrCreateGenreId(category);
 
-      for (const i of news.items) {
-          const [uuidRows] = await connection.query('SELECT UUID() uuid;');
-          const uuid = (uuidRows as any)[0].uuid;
+        for (const i of news.items) {
+          // Buscar si ya existe la noticia principal por news_url
+          const [existingRows] = await conn.query(
+              'SELECT BIN_TO_UUID(id) as id FROM news WHERE news_url = ?',
+              [i.newsUrl]
+          ) as [any[], any];
 
-          await this.insertNewsItem(i, genreId, uuid);
+          let uuid: string;
+          if (existingRows.length > 0) {
+              uuid = existingRows[0].id;
+          } else {
+              const [uuidRows] = await conn.query('SELECT UUID() uuid;');
+              uuid = (uuidRows as any)[0].uuid;
+              await this.insertNewsItem(i, genreId, uuid, conn);
+          }
 
           if (i.hasSubnews) {
-              await this.insertSubnews(i.subnews!, genreId, uuid);
+              await this.insertSubnews(i.subnews!, genreId, uuid, conn);
           }
       }
 
-      await connection.commit();
+        await conn.commit();
     } catch (e) {
-
-      await connection.rollback();
-
-      if (e instanceof Error) {
-          throw new Error(e.message);
-      } else {
-          throw e;
-      }
+        console.log(e);
+        await conn.rollback();
+        if (e instanceof Error) {
+            throw new Error(e.message);
+        } else {
+            throw e;
+        }
+    } finally {
+        conn.release();
     }
   }
 
-  /**
-   * Retrieves a paginated list of inactive news items.
-   * @param {number} limit - Maximum number of results.
-   * @param {number} offset - Number of results to skip.
-   * @returns {Promise<{ data: NewsOutput[], total: number }>} News data and total count.
-   * @throws {Error} On connection or validation failure.
-   */
   async getInactive(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number }> {
     const [rows] = await connection.query(
       `SELECT bin_to_uuid(n.id) AS id, n.created AS timestamp, n.title, 
@@ -311,7 +308,7 @@ export class NewsModel implements INewsModel{
     ) as [any[], any];
 
     if (rows.length === 0) {
-      throw new Error('Error fetching news');     
+      return {data: [], total: 0};
     }
 
     const total = rows[0].total;
@@ -326,14 +323,6 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
 
-  /**
-   * Retrieves a paginated list of news filtered by category.
-   * @param {number} limit - Maximum number of results.
-   * @param {number} offset - Number of results to skip.
-   * @param {Category} category - Category to filter news by.
-   * @returns {Promise<{ data: NewsOutput[], total: number }>} News data and total count.
-   * @throws {Error} On connection or validation failure.
-   */
   async getByCategory(limit: number, offset: number, category: Category): Promise<{ data: NewsOutput[], total: number }> {
     const genreId = await this.getOrCreateGenreId(category);
 
@@ -373,4 +362,3 @@ export class NewsModel implements INewsModel{
   }
   
 }
- 

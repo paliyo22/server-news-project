@@ -104,7 +104,7 @@ export class AuthModel implements IAuthModel{
     }
     const result = validateUserOutput(rows[0]);
     if(!result.success){
-      throw new Error("Validation error");
+      throw new Error("Validation error aaaa");
     } 
     return result.output;
   }

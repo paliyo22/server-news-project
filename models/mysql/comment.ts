@@ -2,6 +2,7 @@ import type { ResultSetHeader } from "mysql2";
 import { connection } from "../../db/mysql";
 import type { ICommentModel } from "../../interfaces";
 import { validateCommentOutput, type CommentOutput } from "../../schemas";
+import { parse } from "uuid";
 
 export class CommentModel implements ICommentModel {
     /**
@@ -120,7 +121,7 @@ export class CommentModel implements ICommentModel {
     async addLike(userId: string, commentId: string): Promise<boolean> {
         const [rows] = await connection.query(
             `INSERT INTO likes_x_comment (user_id, comment_id)
-            VALUES (?, ?);`, [userId, commentId]
+            VALUES (UUID_TO_BIN(?), UUID_TO_BIN(?));`, [userId, commentId]
         ) as [ResultSetHeader, any];
 
         return rows.affectedRows > 0;
@@ -136,7 +137,7 @@ export class CommentModel implements ICommentModel {
     async deleteLike(userId: string, commentId: string): Promise<boolean> {
         const [rows] = await connection.query(
             `DELETE FROM likes_x_comment 
-            WHERE user_id = ? AND comment_id = ?;`, [userId, commentId]
+            WHERE user_id = UUID_TO_BIN(?) AND comment_id = UUID_TO_BIN(?);`, [userId, commentId]
         ) as [ResultSetHeader, any];
         
         return rows.affectedRows > 0;
@@ -148,23 +149,28 @@ export class CommentModel implements ICommentModel {
      * @param {string[]} commentId - An array of comment IDs to fetch likes for.
      * @returns {Promise<Map<string, string[]>>} - A map where each key is a comment ID, and the value is an array of user IDs who liked that comment.
      */
-    async getLikes(commentId: string[]): Promise<Map<string,string[]>> {
+    async getLikes(commentIds: string[]): Promise<Map<string, string[]>> {
         const likesMap = new Map<string, string[]>();
 
-        for (const id of commentId) {
+        for (const id of commentIds) {
             likesMap.set(id, []);
         }
 
-        const placeholders = commentId.map(() => '?').join(', ');
+        const binaryIds = commentIds.map(uuid => Buffer.from(parse(uuid)));
+
+        if (binaryIds.length === 0) return likesMap;
+
+        const placeholders = binaryIds.map(() => '?').join(', ');
         const [rows] = await connection.query(
-            `SELECT comment_id, user_id
-            FROM likes_x_comment
-            WHERE comment_id IN (${placeholders});`,
-            commentId
+            `SELECT BIN_TO_UUID(l.comment_id) AS comment_id, u.username
+            FROM likes_x_comment l
+            LEFT JOIN user u ON l.user_id = u.id
+            WHERE l.comment_id IN (${placeholders})`,
+            binaryIds
         ) as [any[], any];
 
         for (const row of rows) {
-            likesMap.get(row.comment_id)!.push(row.user_id);
+            likesMap.get(row.comment_id)!.push(row.username);
         }
 
         return likesMap;
@@ -176,19 +182,19 @@ export class CommentModel implements ICommentModel {
      * @param {string} userId - The ID of the user attempting to update the comment.
      * @param {string} commentId - The ID of the comment to be updated.
      * @param {string} comment - The new content to replace the existing comment content.
-     * @returns {Promise<string>} - Returns the updated comment content.
+     * @returns {Promise<boolean>} - Returns true if the comment was updated.
      * @throws {Error} - Throws an error if the update fails (e.g., the comment does not exist or the user is not authorized).
      */
-    async update(userId: string, commentId: string, comment: string): Promise<string> {
+    async update(userId: string, commentId: string, comment: string): Promise<boolean> {
         const [rows] = await connection.query(
             `UPDATE comment SET content = ? 
-            WHERE id = ? AND user_id = ?;`,[comment, commentId, userId]
+            WHERE id = UUID_TO_BIN(?) AND user_id = UUID_TO_BIN(?);`,[comment, commentId, userId]
         ) as [ResultSetHeader, any];
 
         if(rows.affectedRows === 0){
-            throw new Error('Error updating comment');
+            return false;
         }
         
-        return comment;
+        return true;
     }
 }

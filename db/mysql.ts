@@ -16,7 +16,13 @@ const DEFAULT_CONFIG={
     database: config.DBName
 }
 
-//export const connection = await mysql.createConnection(DEFAULT_CONFIG);  // dev
+export const connection = mysql.createPool({  // production
+  ...DEFAULT_CONFIG,
+  waitForConnections: true,
+  connectionLimit: 10,
+  timezone: 'Z'
+})
+
 
 /**
  * MySQL connection pool configuration for production environments.
@@ -26,10 +32,11 @@ const DEFAULT_CONFIG={
  * @constant {mysql.Pool} 
  * @see https://www.npmjs.com/package/mysql2#pooling-connections
  */
+/*
 export const connection = mysql.createPool({  // production
-  uri: config.DBUrl,
+  ...DEFAULT_CONFIG,
   waitForConnections: true,
   connectionLimit: 10,
   timezone: 'Z'
 })
-  
+*/

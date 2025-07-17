@@ -144,7 +144,11 @@ async function checkMySQLConnection(): Promise<void> {
  * @constant {object} DEFAULT_CONFIG - Default database connection configuration.
  */
 const DEFAULT_CONFIG={ 
-  //se borro luego de ejecutarse.
+  host: 'localhost',
+  user: 'root',
+  port: 3306,
+  password: '',
+  database: 'newspagedb'
 }
 
 const LocalConnection = await mysql.createConnection(DEFAULT_CONFIG); 
@@ -201,5 +205,16 @@ async function transferData(): Promise<void> {
   }
 }
 
+const run = async () => {
+    try {
+      await checkMySQLConnection();
+      await transferData();
+    } catch (e) {
+      console.error("Error: NO FUNCA BIEN");
+    }finally {
+      await connection.end();
+      await LocalConnection.end();
+    }
+};
 
-
+run();

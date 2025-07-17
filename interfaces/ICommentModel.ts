@@ -6,7 +6,7 @@ export interface ICommentModel {
     getReplies(commentId: string): Promise<CommentOutput[]>
     addComment(userId: string, newsId: string, comment: string, parentId?: string): Promise<boolean>
     deleteComment(commentId: string, userId: string): Promise<boolean>
-    update(userId: string, commentId: string, comment: string): Promise<string> 
+    update(userId: string, commentId: string, comment: string): Promise<boolean> 
     
     getLikes(commentId: string[]): Promise<Map<string,string[]>>
     addLike(userId: string, commentId: string): Promise<boolean>
