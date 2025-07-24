@@ -32,14 +32,12 @@ export class AuthController {
         res
             .cookie('accessToken', accessToken, {
                 httpOnly: true,
-                domain: '.vercel.app',
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                 maxAge: jwtAccessExpiryMs
             })
             .cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                domain: '.vercel.app',
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                 maxAge: jwtRefreshExpiryMs
