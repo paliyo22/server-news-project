@@ -1,6 +1,11 @@
 import type { CommentOutput } from "../schemas";
 
-
+/**
+ * Interface for handling comment-related operations such as comment creation. 
+ * This interface defines the necessary methods for interacting with the comment model.
+ * 
+ * @interface ICommentModel
+ */
 export interface ICommentModel {
     getComments(id: string): Promise<CommentOutput[]>
     getReplies(commentId: string): Promise<CommentOutput[]>

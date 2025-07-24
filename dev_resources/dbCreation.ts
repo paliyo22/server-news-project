@@ -1,5 +1,21 @@
-import { connection } from "../db/mysql";
 import mysql, { type ResultSetHeader } from 'mysql2/promise'
+import config from '../config';
+
+const DEFAULT_CONFIG_A={ 
+  host: '',
+  user: '',
+  port: 3306,
+  password: '',
+  database: ''
+}
+
+
+export const connection = mysql.createPool({  // production
+  uri: config.DBUrl,
+  waitForConnections: true,
+  connectionLimit: 10,
+  timezone: 'Z'
+})
 
 /**
  * Function to check and create necessary tables in the MySQL database.
@@ -36,7 +52,6 @@ async function checkMySQLConnection(): Promise<void> {
             thumbnail varchar(500),
             thumbnail_proxied varchar(500),
             image_url varchar(500),
-            subnews binary(16),
             has_subnews boolean default false,
             news_url varchar(500) not null unique,
             publisher varchar(100) not null,
@@ -112,6 +127,17 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    await connection.query(
+      `create table news_x_subnews(
+        id int auto_increment primary key,
+        news_id BINARY(16) NOT NULL,
+        subnews_id BINARY(16) NOT NULL,
+        FOREIGN KEY (news_id) REFERENCES news(id) ON DELETE CASCADE,
+        FOREIGN KEY (subnews_id) REFERENCES news(id),
+        CONSTRAINT chk_subnews_unique CHECK (news_id <> subnews_id)
+      );`
+    )
+
     // Insert default data into the genre table
     await connection.query(
         `INSERT INTO genre (id, name) VALUES
@@ -130,8 +156,8 @@ async function checkMySQLConnection(): Promise<void> {
             ( 1, 'user'),
             ( 2, 'admin');`
     );
-
-    console.log('✅ Tables created successfully.');
+ 
+    console.log('✅ Conected succesfully. ');
   } catch (error) {
     console.error('❌ Error connecting to MySQL:', error);
   }
@@ -159,17 +185,21 @@ const LocalConnection = await mysql.createConnection(DEFAULT_CONFIG);
  * 
  * @returns {Promise<void>} - A promise that indicates if the data migration was successful.
  */
-async function transferData(): Promise<void> {
+async function transferData(): Promise<void> { //se hace en 3 partes para evitar errores y no crear el codigo
   try {
 
-    const [rows] = await LocalConnection.query(`SELECT * FROM news;`) as [any[], any];
+    const [rows] = await LocalConnection.query(
+      `SELECT count(id) FROM news where subnews is null;
+      SELECT count(id) FROM news where subnews is not null and has_subnews is true;
+      SELECT count(id) FROM news where subnews is not null and has_subnews is false;`
+    ) as [any[], any];
 
     if (!rows.length) {
       console.log('No records to migrate.');
       return;
     }
 
-    console.log(`Migrating ${rows.length} records...`);
+    console.log(`Migrating records...`);
 
 
     const insertQuery = `
@@ -207,8 +237,8 @@ async function transferData(): Promise<void> {
 
 const run = async () => {
     try {
-      await checkMySQLConnection();
-      await transferData();
+      //await checkMySQLConnection();
+      //await transferData();
     } catch (e) {
       console.error("Error: NO FUNCA BIEN");
     }finally {

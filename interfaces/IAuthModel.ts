@@ -1,5 +1,5 @@
 import type { AuthInput, UserInput, UserOutput } from "../schemas";
-import type { Role } from "../enum/role";
+import type { Role } from "../enum";
 
 /**
  * Interface for handling authentication-related operations such as user creation, login, token management, 

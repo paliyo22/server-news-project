@@ -1,5 +1,5 @@
 import { array, boolean, date, enum_, nullable, number, object, optional, safeParse, string, union, unknown, type InferInput } from "valibot";
-import { Category } from "../enum/category";
+import { Category } from "../enum";
 
 
 const imagesSchema = object({
@@ -31,6 +31,10 @@ const welcomeSchema = object({
     status: string(),
     items: array(itemSchema),
 });
+
+export type SubNewsItem = InferInput<typeof subNewsSchema> 
+
+export type NewsItem = InferInput<typeof itemSchema> 
 
 export type NewsImput = InferInput<typeof welcomeSchema> 
 

@@ -1,3 +1,5 @@
 export * from './user'
 export * from './news'
 export * from './comment'
+export * from './location'
+export * from './weather'

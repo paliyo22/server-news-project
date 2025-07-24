@@ -20,7 +20,7 @@ export const apiData = async (category: string): Promise<NewsImput> => {
         {
             headers:{
                 'x-rapidapi-key': config.ApiKey,
-                'x-rapidapi-host': config.ApiHost
+                'x-rapidapi-host': 'google-news13.p.rapidapi.com'
             }
         }
     );
@@ -30,7 +30,7 @@ export const apiData = async (category: string): Promise<NewsImput> => {
     }
     const newsArray = validateApiNews(response.data);
     if(!newsArray.success){
-        throw new Error("ERROR: MANEJASTE MAL LOS DATOS");
+        throw new Error("Validation error");
     }
         
     return newsArray.output;    

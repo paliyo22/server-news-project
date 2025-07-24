@@ -3,7 +3,7 @@ import {
     object, optional, partial, pipe, safeParse, string, 
     toMaxValue, union, uuid, type InferInput 
 } from "valibot";
-import { Role } from "../enum/role";
+import { Role } from "../enum";
 
 const emailSchema = pipe(string(), email());
 const passwordSchema = pipe(string(), minLength(6));

@@ -2,44 +2,22 @@ import type { Request, Response } from 'express';
 import { validatePartialUser } from '../schemas';
 import config from '../config';
 import type { IUserModel, IAuthModel } from '../interfaces';
-import  { getUserById } from '../services/finder';
-import  { logOut } from '../services/endSession';
-import { Role } from '../enum/role';
+import  { getUserById, logOut } from '../services';
+import { Role } from '../enum';
 
-/**
- * Controller responsible for handling user-related HTTP operations.
- * Routes include user profile management, likes on news, and admin cleanup.
- */
 export class UserController {
 
-    /**
-     * Creates an instance of UserController.
-     * 
-     * @param {IUserModel} userModel - The user model for DB operations.
-     * @param {IAuthModel} authModel - The auth model used for token-based auth and session handling.
-     */
     constructor(
         private readonly userModel: IUserModel,
         private readonly authModel: IAuthModel
     ) {}
 
-    /**
-     * Retrieves the profile of the authenticated user, or another user if admin.
-     * 
-     * @route GET /users/ or /users/:id
-     * @access Authenticated users, admins for ID-based lookup.
-     * 
-     * @param {Request} req - Express request object.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends user data or error.
-     */
     getById = async (req: Request, res: Response): Promise<void> => { 
         let id;
 
         if((req as any).user?.role === Role.ADMIN){
             if(!req.params?.id || typeof req.params?.id !== "string" || req.params?.id.trim() === ""){
-                res.status(400).json({ error: 'bad request' });
-                return;
+                id = (req as any).user?.id
             }else{
                 id = req.params?.id;
             }
@@ -62,16 +40,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Retrieves a paginated list of all users. Requires admin access.
-     * 
-     * @route GET /users?limit=&offset=
-     * @access Admin only.
-     * 
-     * @param {Request} req - Express request object, with optional query params.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends list of users or error.
-     */
     getAll = async (req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
         if(limit<0){
@@ -95,16 +63,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Updates the profile of the authenticated user with partial data.
-     * 
-     * @route PATCH /users/
-     * @access Authenticated users.
-     * 
-     * @param {Request} req - Express request object with user data in body.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends updated user or error.
-     */
     update = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const result = validatePartialUser(req.body);
@@ -125,16 +83,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Deletes all inactive users if the provided password matches the internal admin password.
-     * 
-     * @route DELETE /users/clean
-     * @access Admin only.
-     * 
-     * @param {Request} req - Express request object, requires password in body.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends deletion result or error. Logs out on failure.
-     */
     clean = async (req: Request, res: Response): Promise<void> => {
         const password = req.body?.password;
 
@@ -162,16 +110,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Adds a like to a specific news item from the authenticated user.
-     * 
-     * @route POST /users/like/:id
-     * @access Authenticated users.
-     * 
-     * @param {Request} req - Express request object with news ID in URL.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends success status or duplicate error.
-     */
     saveLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -195,16 +133,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Removes a like from a specific news item by the authenticated user.
-     * 
-     * @route DELETE /users/like/:id
-     * @access Authenticated users.
-     * 
-     * @param {Request} req - Express request object with news ID in URL.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends success or not found.
-     */
     deleteLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -228,16 +156,6 @@ export class UserController {
         }
     }
 
-    /**
-     * Checks if the authenticated user has liked a specific news item.
-     * 
-     * @route GET /users/like/:id
-     * @access Authenticated users.
-     * 
-     * @param {Request} req - Express request object with news ID in URL.
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>} Sends a boolean field `liked`.
-     */
     isLiked = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -256,24 +174,16 @@ export class UserController {
         }
     }
 
-    /**
-     * Deactivates the authenticated user's account and logs them out.
-     *
-     * - Sets the user's `is_active` flag to false.
-     * - Deactivates all comments associated with the user.
-     * - Revokes the user's refresh token.
-     * - Clears the authentication cookies.
-     *
-     * @param {Request} req - HTTP request object, must include the authenticated user's token.
-     * @param {Response} res - HTTP response object.
-     * @returns {Promise<void>} Sends a JSON response indicating success or an internal error.
-     */
     deleteUser = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
+        const id = req.body?.id
         
         try {
-            await this.userModel.delete(token.id);
-                      
+            if(id && token.role === Role.ADMIN){
+                await this.userModel.delete(id);
+            }else{
+                await this.userModel.delete(token.id);
+            }                      
             res.status(200).json({ message: 'The acount was deleted' });
         } catch (e) {
             if (e instanceof Error) {

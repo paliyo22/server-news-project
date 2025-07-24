@@ -1,11 +1,13 @@
 import express, { json } from "express";
 import config from "./config.ts";
-import { authRoutes, commentRoutes, newsRoutes, userRoutes } from "./routes/index.ts";
+import { authRoutes, commentRoutes, locationRoutes, newsRoutes, userRoutes } from "./routes/index.ts";
 import { AuthModel, CommentModel, NewsModel, UserModel } from "./models/mysql/index.ts";
 import { corsMiddleware } from "./middlewares/cors.ts";
 import cookieParser from 'cookie-parser';
 
 const app = express();
+
+app.set('trust proxy', true);
 
 /**
  * Middleware to parse JSON bodies for incoming requests.
@@ -39,6 +41,7 @@ app.use('/comment', commentRoutes({ commentModel: new CommentModel }));
 app.use('/user', userRoutes({ userModel: new UserModel}, { authModel: new AuthModel}));
 app.use('/news', newsRoutes({ newsModel: new NewsModel}));
 app.use('/auth', authRoutes({ authModel: new AuthModel}));
+app.use('/location', locationRoutes());
 
 /**
  * Starts the Express server on a specified port.

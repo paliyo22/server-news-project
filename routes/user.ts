@@ -1,8 +1,7 @@
 import { Router } from "express"
-import type { IUserModel } from "../interfaces/IUserModel"
-import { UserController } from "../controllers/user"
+import type { IUserModel, IAuthModel } from "../interfaces"
+import { UserController } from "../controllers"
 import { authenticateToken, authorizeAdmin } from "../middlewares"
-import type { IAuthModel } from "../interfaces"
 
 /**
  * Creates and configures the routes related to user management.

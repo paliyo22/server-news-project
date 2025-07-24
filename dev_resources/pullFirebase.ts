@@ -1,6 +1,12 @@
 import axios from 'axios';
 import { connection } from '../db/mysql';
 
+/**
+ * File to migrate the Data Base from Firebase to local MySQL.
+ * 
+ * Archivo para migrar la base de datos de Firebase a MySQL local.
+ */
+
 type NewsItem = {
   category: string;
   imageUrl?: string;
@@ -27,7 +33,7 @@ const fetchNewsFromAPI = async (): Promise<NewsItem[]> => {
     // Convierte el objeto en array
     return Object.values(response.data || {});
   } catch (error: any) {
-    console.error('❌ Error al hacer pull de la API externa:', error.message);
+    console.error('Error al hacer pull de la API externa:', error.message);
     throw new Error('Error al obtener noticias');
   }
 };
@@ -61,9 +67,9 @@ const saveNews = async (news: NewsItem[]) => {
         }
       }
     }
-    console.log(`✅ ${news.length} noticias procesadas (insertadas o ignoradas si ya existían).`);
+    console.log(`${news.length} noticias procesadas (insertadas o ignoradas si ya existían).`);
   } catch (e) {
-    console.error('❌ Error al guardar noticias:', e);
+    console.error('Error al guardar noticias:', e);
   }
 };
 
@@ -73,7 +79,7 @@ const run = async () => {
     const news = await fetchNewsFromAPI();
     await saveNews(news);
   } catch (e) {
-    console.error('❌ Error en el proceso de pull y guardado:', e);
+    console.error('Error en el proceso de pull y guardado:', e);
   } finally {
     connection.end();
   }

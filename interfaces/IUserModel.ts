@@ -1,4 +1,4 @@
-import type { UserInput, UserOutput } from "../schemas/user";
+import type { UserInput, UserOutput } from "../schemas";
 
 /**
  * Interface for managing user-related operations including updating user details, 

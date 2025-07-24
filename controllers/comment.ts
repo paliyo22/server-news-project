@@ -1,25 +1,10 @@
 import type { ICommentModel } from "../interfaces";
 import type { Request, Response } from 'express';
 
-/**
- * Controller responsible for handling comment-related HTTP requests.
- */
 export class CommentController {
 
-    /**
-     * Creates a new CommentController.
-     * @param {ICommentModel} commentModel - The data model used to perform operations on comments.
-     */
     constructor(private readonly commentModel: ICommentModel){}
 
-    /**
-     * Retrieves featured comments for a specific news item.
-     * 
-     * @route GET /comments/:id
-     * @param {Request} req - Express request object (expects `id` as route param).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     getComment = async (req: Request, res: Response): Promise<void> => {
 
         const id = req.params.id;
@@ -41,14 +26,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Retrieves replies to a specific comment.
-     * 
-     * @route GET /comments/:id/replies
-     * @param {Request} req - Express request object (expects `id` as route param).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     getReplies = async (req: Request, res: Response): Promise<void> => {
 
         const commentId = req.params.id;
@@ -75,14 +52,6 @@ export class CommentController {
         }   
     }
 
-    /**
-     * Adds a new comment to a news item or as a reply to another comment.
-     * 
-     * @route POST /comments/:id
-     * @param {Request} req - Express request object (expects `id` as route param, `comment` and `parentCommentId` in body).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     addComment = async (req: Request, res: Response): Promise<void> => {
 
         const token = (req as any).user;
@@ -113,14 +82,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Deletes a comment made by the authenticated user.
-     * 
-     * @route DELETE /comments/:id
-     * @param {Request} req - Express request object (expects `id` as route param).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     deleteComment = async (req: Request, res: Response): Promise<void> => {
 
         const token = (req as any).user;
@@ -142,14 +103,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Updates the content of a comment by its author.
-     * 
-     * @route PATCH /comments
-     * @param {Request} req - Express request object (expects `comment` and `commentId` in body).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     update = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -174,14 +127,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Adds a like to a comment from the authenticated user.
-     * 
-     * @route POST /comments/:id/like
-     * @param {Request} req - Express request object (expects `id` as route param).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     addLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -207,14 +152,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Removes a like from a comment by the authenticated user.
-     * 
-     * @route DELETE /comments/:id/like
-     * @param {Request} req - Express request object (expects `id` as route param).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     deleteLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -240,14 +177,6 @@ export class CommentController {
         }
     }
 
-    /**
-     * Retrieves likes (user IDs) for a set of comment IDs.
-     * 
-     * @route POST /comments/likes
-     * @param {Request} req - Express request object (expects `{ comments: string[] }` in body).
-     * @param {Response} res - Express response object.
-     * @returns {Promise<void>}
-     */
     getLikes = async (req: Request, res: Response): Promise<void> => {
         const comments: string[] = req.body.comments;
         

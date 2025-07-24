@@ -1,6 +1,6 @@
 import { Router } from "express"
-import { NewsController } from "../controllers/news"
-import type { INewsModel } from "../interfaces/INewsModel"
+import { NewsController } from "../controllers"
+import type { INewsModel } from "../interfaces"
 import { authenticateToken, authorizeAdmin } from "../middlewares"
 
 /**
@@ -18,6 +18,7 @@ export const newsRoutes = ({newsModel}: {newsModel: INewsModel}): Router => {
     newsRouter.get('/inactive', authenticateToken, authorizeAdmin, newsController.getInactive);
     newsRouter.get('/category/:category', newsController.getCategory);
     
+    newsRouter.post('/search', newsController.search);
     newsRouter.post('/fetch', authenticateToken, authorizeAdmin, newsController.fetchApi);
     
     newsRouter.delete('/clean', authenticateToken, authorizeAdmin, newsController.clean);

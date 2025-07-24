@@ -1,10 +1,8 @@
 import type { Request, Response } from 'express';
-import type { INewsModel } from '../interfaces/INewsModel';
+import type { INewsModel } from '../interfaces';
 import config from '../config';
-import { Category, isCategory } from '../enum/category';
-import { apiData, delay } from '../services/apiNews';
-import { saveUrlImage } from '../services/saveImageUrl'
-
+import { Category, isCategory } from '../enum';
+import { apiData, delay, saveUrlImage } from '../services';
 
 export class NewsController {
 
@@ -132,8 +130,17 @@ export class NewsController {
     }
     
     clean = async (req: Request, res: Response): Promise<void> => {
+        const password = req.body?.password;
+
+        if(!password || typeof password !== 'string' || password.trim() === ''){
+            res.status(400).json({ error: 'bad request'});
+            return;
+        }
         try {
-    
+            if(password !== config.Password){
+                res.status(401).json({ error: 'Verification failed.' });
+                return;
+            }
             const deletedCount = await this.newsModel.clean();
             res.status(200).json({ success: true, deleted: deletedCount });
 
@@ -202,4 +209,22 @@ export class NewsController {
         }
     }  
 
+    search = async (req: Request, res: Response): Promise<void> => {
+        const contain = req.body.contain;
+
+        if (!contain || typeof contain !== 'string' || contain.trim() === ''){
+            res.status(400).json({ error: 'Invalid or missing body in request' });
+            return;
+        }
+        try{
+            const news = await this.newsModel.search(contain);
+            res.status(200).json({ news });
+        }catch(e){
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        }
+    }
 }

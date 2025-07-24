@@ -1,8 +1,8 @@
 import type { ResultSetHeader } from "mysql2";
 import { connection } from "../../db/mysql";
-import type { Category } from "../../enum/category";
+import type { Category } from "../../enum";
 import type { INewsModel } from "../../interfaces";
-import { validateOutputNews, type NewsImput, type NewsOutput } from "../../schemas";
+import { validateOutputNews, type NewsImput, type NewsItem, type NewsOutput, type SubNewsItem } from "../../schemas";
 
 
 export class NewsModel implements INewsModel{
@@ -31,12 +31,12 @@ export class NewsModel implements INewsModel{
     return genreId;
   }
 
-  private async insertNewsItem(i: any, genreId: number, uuid: string, conn: any) {
+  private async insertNewsItem(i: NewsItem, genreId: number, uuid: string, conn: any) {
     await conn.query(
       `INSERT IGNORE INTO news (
           id, created, title, snippet, thumbnail, thumbnail_proxied,
-          subnews, has_subnews, news_url, publisher, news_genre, image_url
-      ) VALUES (UUID_TO_BIN(?), FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          has_subnews, news_url, publisher, news_genre, image_url
+      ) VALUES (UUID_TO_BIN(?), FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
           uuid,
           Math.floor(Number(i.timestamp) / 1000),
@@ -44,7 +44,6 @@ export class NewsModel implements INewsModel{
           i.snippet,
           i.images?.thumbnail ?? null,
           i.images?.thumbnailProxied ?? null,
-          null,
           i.hasSubnews,
           i.newsUrl,
           i.publisher,
@@ -54,39 +53,43 @@ export class NewsModel implements INewsModel{
     );
   }
 
-  private async insertSubnews(subnews: any[], genreId: number, parentUuid: string, conn: any) {
+  private async insertSubnews(subnews: SubNewsItem[], genreId: number, parentUuid: string, conn: any) {
+    let sonId;
     for (const e of subnews) {
-        try {
-            await conn.query(
-                `INSERT INTO news (
-                    created, title, snippet, thumbnail, thumbnail_proxied,
-                    subnews, has_subnews, news_url, publisher, news_genre, image_url
-                ) VALUES (FROM_UNIXTIME(?), ?, ?, ?, ?, UUID_TO_BIN(?), ?, ?, ?, ?, ?);`,
-                [
-                    Math.floor(Number(e.timestamp) / 1000),
-                    e.title,
-                    e.snippet,
-                    e.images?.thumbnail ?? null,
-                    e.images?.thumbnailProxied ?? null,
-                    parentUuid,
-                    false,
-                    e.newsUrl,
-                    e.publisher,
-                    genreId,
-                    e.image_url ?? null
-                ]
-            );
-        } catch (err: any) {
-            if (err.code === 'ER_DUP_ENTRY') {
-                await conn.query(
-                    `UPDATE news SET subnews = UUID_TO_BIN(?) WHERE news_url = ?;`,
-                    [parentUuid, e.newsUrl]
-                );
-                continue;
-            } else {
-                throw err;
-            }
+        const [exist] = await conn.query(
+            'SELECT BIN_TO_UUID(id) as id FROM news WHERE news_url = ?',
+            [e.newsUrl]
+        ) as [any[], any];
+
+        if (exist.length > 0) {
+          sonId = exist[0].id;
+        }else{
+          const [uuidRows] = await conn.query('SELECT UUID() uuid;');
+              sonId = (uuidRows as any)[0].uuid;
+          await conn.query(
+            `INSERT INTO news (
+                id, created, title, snippet, thumbnail, thumbnail_proxied,
+                news_url, publisher, news_genre, image_url
+            ) VALUES (UUID_TO_BIN(?), FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+                sonId,
+                Math.floor(Number(e.timestamp) / 1000),
+                e.title,
+                e.snippet,
+                e.images?.thumbnail ?? null,
+                e.images?.thumbnailProxied ?? null,
+                e.newsUrl,
+                e.publisher,
+                genreId,
+                e.image_url ?? null
+            ]
+          );
         }
+
+        await conn.query(
+          `INSERT INTO news_x_subnews (news_id, subnews_id)
+            VALUES (UUID_TO_BIN(?), UUID_TO_BIN(?));`,[parentUuid, sonId]
+        ) 
     }
   }
 
@@ -174,12 +177,13 @@ export class NewsModel implements INewsModel{
 
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(n.id) AS id, n.created AS timestamp, n.title, 
-      n.snippet, n.image_url, n.news_url AS newsUrl, COUNT(l.user_id) AS likes,
-      n.has_subnews AS hasSubnews, n.publisher, g.name AS category
+          n.snippet, n.image_url, n.news_url AS newsUrl, COUNT(l.user_id) AS likes,
+          n.has_subnews AS hasSubnews, n.publisher, g.name AS category
       FROM news n
+      INNER JOIN news_x_subnews ns ON ns.subnews_id = n.id
       LEFT JOIN genre g ON g.id = n.news_genre
       LEFT JOIN likes_x_news l ON l.news_id = n.id
-      WHERE n.subnews = UUID_TO_BIN(?) AND n.is_active = TRUE
+      WHERE ns.news_id = UUID_TO_BIN(?) AND n.is_active = TRUE
       GROUP BY n.id;`,[id]
     ) as [any[], any];
 
@@ -269,6 +273,12 @@ export class NewsModel implements INewsModel{
           let uuid: string;
           if (existingRows.length > 0) {
               uuid = existingRows[0].id;
+              if(i.hasSubnews){
+                await conn.query(`
+                  UPDATE news SET has_subnews = ? 
+                  WHERE id = UUID_TO_BIN(?);`,[i.hasSubnews, uuid]
+                )
+              }
           } else {
               const [uuidRows] = await conn.query('SELECT UUID() uuid;');
               uuid = (uuidRows as any)[0].uuid;
@@ -278,7 +288,7 @@ export class NewsModel implements INewsModel{
           if (i.hasSubnews) {
               await this.insertSubnews(i.subnews!, genreId, uuid, conn);
           }
-      }
+        }
 
         await conn.commit();
     } catch (e) {
@@ -361,4 +371,31 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
   
+  async search(contain: string): Promise<NewsOutput[]> {
+    const [rows] = await connection.query(
+      `SELECT BIN_TO_UUID(n.id) AS id, n.created AS timestamp, n.title, 
+      n.snippet, n.image_url, n.news_url AS newsUrl, COUNT(l.user_id) AS likes,
+      n.is_active, n.has_subnews AS hasSubnews, n.publisher, g.name AS category
+      FROM news n
+      LEFT JOIN genre g ON g.id = n.news_genre
+      LEFT JOIN likes_x_news l ON l.news_id = n.id
+      WHERE title LIKE ?
+      GROUP BY n.id
+      ORDER BY n.created DESC;`, [`%${contain}%`]
+    ) as [any[], any];
+
+    if (rows.length === 0) {
+      return [];     
+    }
+
+    const news: NewsOutput[] = rows.map(validateOutputNews)
+                                .filter(result => result.success)
+                                .map(result => result.output as NewsOutput);
+    if(news.length === 0){
+      throw new Error('Error validating news');  
+    }
+
+    return news;
+  }
 }
+

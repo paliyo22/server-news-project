@@ -6,8 +6,7 @@
   "scripts": {
     "start": "bun run index.ts",
     "dev": "bun run index.ts",
-    "migrate": "bun run dbStructure/migrationToLocal.ts",
-    "mock": "bun run tests/functionsTest.ts"
+    "db": "bun run dev_resources/dbCreation.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
