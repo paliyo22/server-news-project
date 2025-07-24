@@ -57,7 +57,6 @@ async function checkMySQLConnection(): Promise<void> {
             publisher varchar(100) not null,
             is_active boolean default true,
             news_genre int not null,
-            foreign key (subnews) references news(id) on delete set null,
             foreign key (news_genre) references genre(id)
         );`
     );
@@ -127,6 +126,7 @@ async function checkMySQLConnection(): Promise<void> {
         );`
     );
 
+    // Create the "news_x_subnews" table to store subnews for the news
     await connection.query(
       `create table news_x_subnews(
         id int auto_increment primary key,
@@ -189,9 +189,7 @@ async function transferData(): Promise<void> { //se hace en 3 partes para evitar
   try {
 
     const [rows] = await LocalConnection.query(
-      `SELECT count(id) FROM news where subnews is null;
-      SELECT count(id) FROM news where subnews is not null and has_subnews is true;
-      SELECT count(id) FROM news where subnews is not null and has_subnews is false;`
+      `SELECT * FROM news;`
     ) as [any[], any];
 
     if (!rows.length) {
@@ -205,7 +203,7 @@ async function transferData(): Promise<void> { //se hace en 3 partes para evitar
     const insertQuery = `
       INSERT INTO news (
         id, created, title, snippet, thumbnail, thumbnail_proxied,
-        image_url, subnews, has_subnews, news_url, publisher,
+        image_url, has_subnews, news_url, publisher,
         is_active, news_genre
       ) VALUES ?`;
 
@@ -218,7 +216,6 @@ async function transferData(): Promise<void> { //se hace en 3 partes para evitar
       row.thumbnail || null,
       row.thumbnail_proxied || null,
       row.image_url || null,
-      row.subnews || null,
       row.has_subnews,
       row.news_url,
       row.publisher,
@@ -235,10 +232,47 @@ async function transferData(): Promise<void> { //se hace en 3 partes para evitar
   }
 }
 
+async function transferSubnewsData(): Promise<void> { //se hace en 3 partes para evitar errores y no crear el codigo
+  try {
+
+    const [rows] = await LocalConnection.query(
+      `SELECT * FROM news_x_subnews;`
+    ) as [any[], any];
+
+    if (!rows.length) {
+      console.log('No records to migrate.');
+      return;
+    }
+
+    console.log(`Migrating records...`);
+
+
+    const insertQuery = `
+      INSERT INTO news_x_subnews (
+        id, news_id, subnews_id
+      ) VALUES ?`;
+
+
+    const values = rows.map(row => [
+      row.id,
+      row.news_id,
+      row.subnews_id,
+    ]);
+
+
+    const [result] = await connection.query(insertQuery, [values]) as [ResultSetHeader, any];
+
+    console.log(`✅ Migration completed: ${result.affectedRows} records inserted.`);
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
+  }
+}
+
 const run = async () => {
     try {
-      //await checkMySQLConnection();
-      //await transferData();
+      await checkMySQLConnection();
+      await transferData();
+      await transferSubnewsData();
     } catch (e) {
       console.error("Error: NO FUNCA BIEN");
     }finally {

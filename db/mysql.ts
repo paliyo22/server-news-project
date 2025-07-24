@@ -25,7 +25,7 @@ const DEFAULT_CONFIG={
  * @see https://www.npmjs.com/package/mysql2#pooling-connections
  */
 export const connection = mysql.createPool({  // production
-  ...DEFAULT_CONFIG,
+  uri: config.DBUrl,
   waitForConnections: true,
   connectionLimit: 10,
   timezone: 'Z'
