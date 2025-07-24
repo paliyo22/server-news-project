@@ -1,8 +1,7 @@
 import cors from 'cors';
 
 const ACCEPTED_ORIGINS = [
-    'http://localhost:1234',
-    'http://localhost:4200'
+    'https://noticias-angular-beige.vercel.app'
 ]
 
 interface CorsMiddlewareOptions{
