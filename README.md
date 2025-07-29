@@ -1,11 +1,19 @@
 # Introduction (English)
 
-I developed a **RESTful API** for managing users, news, and authentication using **Node.js** as the runtime environment and **Express.js** as the framework for creating HTTP routes. The application supports authentication via **JWT (JSON Web Tokens)**, user management with specific roles (such as administrators), and interaction with news through **CRUD operations**. Users can comment on, like, and interact with news articles. Additionally, third-party services like the **Google News API** were integrated to fetch news from various sources and display them on the platform.
+I developed a **RESTful API** for managing users, news, comments and authentication using **Node.js** as the runtime environment and **Express.js** as the framework for creating HTTP routes. The application supports authentication via **JWT (JSON Web Tokens)**, user management with specific roles (such as administrators), and interaction with news through **CRUD operations**. Users can comment on, like, and interact with news articles. Additionally, third-party services were integrated to enhance the platform’s functionality:
+
+- **Google News API** to fetch news from various external sources.
+
+- **IP Geolocation API** to determine user location based on their IP address.
+
+- **OpenWeather API** to retrieve weather information according to the user's location.
 
 ---
 
-### **Technologies Used**:
+## **Technologies Used**:
 
+- **Bun**: A modern and fast runtime used as a replacement for Node/npm.
+- **TypeScript**: A superset of JavaScript that enables static typing and greater development robustness.
 - **Node.js**: JavaScript runtime built on Chrome's V8 engine for server-side development.
 - **Express.js**: Web framework for building RESTful APIs and web applications.
 - **MySQL2**: Relational database used to store users, news, and comments, powered by MySQL as the DBMS.
@@ -20,7 +28,7 @@ I developed a **RESTful API** for managing users, news, and authentication using
 
 ---
 
-### **Deployment**:
+## **Deployment**:
 
 - **Database**: Hosted on Railway, a platform that simplifies cloud-based database creation and management with auto-scaling.
 - **Server**: Deployed on Render, a cloud service offering continuous deployment and scalability for Node.js applications.
@@ -51,10 +59,13 @@ Make sure you have the following installed:
 2. **Navigate to the project folder**:  
    `cd mi-proyecto`
 
-3. **Install dependencies**:  
+3. **This project uses Bun as the runtime, so it is recommended to install it globally**:
+   `npm install -g bun`
+
+4. **Install dependencies**:  
    `bun install`
 
-4. **Configure the .env file**:  
+5. **Configure the .env file**:  
    In the project root, create a `.env` file and add the following:
 
    ```env
@@ -63,12 +74,14 @@ Make sure you have the following installed:
    DB_PASSWORD=password
    DB_NAME=my_database
    DB_PORT=3306
-   API_KEY=your_api_key
-   API_HOST=your_api_host
+   DB_URL=database_public_url
    SECRET_KEY=your_secret_key
    SECRET_REFRESH_KEY=your_refresh_secret_key
-   SALT=10
-5. **Start the server**:
+   PASSWORD=your_password
+   SALT=9
+   API_KEY=your_api_key
+
+6. **Start the server**:
     `bun dev`
     The server will run at http://localhost:1234
 
@@ -127,32 +140,36 @@ Make sure you have the following installed:
 - `POST /auth/role`: Modify user roles (admin only).
 
 ### `/user`
-- `GET /user`: Get information about the authenticated user.  
-- `GET /user/getall`: Retrieve a list of all users (admin only).  
-- `PATCH /user/update`: Update user profile information.  
+- `GET /user/me`: Get information about the authenticated user.  
+- `GET /user/all`: Retrieve a list of all users (admin only).  
+- `PATCH /user/me`: Update user profile information.  
 - `POST /user/delete`: Soft-delete a user (deactivate).  
-- `DELETE /user/erase`: Permanently delete inactive users (admin + extra password).  
+- `DELETE /user/clean`: Permanently delete inactive users (admin + extra password).  
 - `GET /user/like/:id`: Check if the user has liked a specific news post.  
 - `POST /user/like/:id`: Add a like to a news article.  
-- `DELETE /user/like/:id`: Remove a like from a news article.  
-- `POST /user/comment/:id`: Add a comment to a news article.  
-- `DELETE /user/comment/:id`: Delete a comment from a news article.  
+- `DELETE /user/like/:id`: Remove a like from a news article.    
 - `GET /user/:id`: Retrieve user info by ID (admin only).
 
 ### `/news`
 - `GET /news`: Get a list of all news articles.  
 - `GET /news/featured`: Get featured or highlighted news.  
+- `GET /news/inactive`: Get non-visible news (admin only).
+- `GET /news/category/:category`: Filter news by category. 
+- `POST /news/search`: Returns all news articles that contain the entered text in the title.
 - `POST /news/fetch`: Fetch news from an external API (e.g., Google News).  
-- `POST /news/:id`: Toggle visibility status of a news article.  
-- `DELETE /news/clean`: Delete inactive news entries (admin only).  
-- `GET /news/inactive`: Get non-visible news (admin only).  
-- `GET /news/newsComment/:id`: Get comments on a news article.  
-- `GET /news/replies/:id`: Get replies to a specific comment.  
-- `GET /news/category/:category`: Filter news by category.  
+- `DELETE /news/clean`: Delete inactive news entries (admin + extra password).
 - `GET /news/:id`: Get a single news article by ID.
+- `POST /news/:id`: Toggle visibility status of a news article.   
 
 ### `/comment`
-- *(To be implemented due to an initial design oversight.)*
+- `GET /comment/replies/:id`: Retrieves the replies to a comment.
+- `POST /comment/likes/batch`: Returns the like status for a set of comments based on an array of IDs.
+- `POST /comment/like/:id`: Adds a like to a comment.
+- `DELETE /comment/like/:id`: Removes a like from a comment.
+- `GET /comment/:id`: Retrieves the comments associated with a news article.
+- `POST /comment/:id`: Adds a comment or a reply related to a news article.
+- `PATCH /comment/:id`: Updates the content of a comment.
+- `DELETE /comment/:id`: Deletes a comment or a reply.
 
 ---
 
@@ -166,11 +183,9 @@ Make sure you have the following installed:
 - `interfaces` : Contains TypeScript interfaces and types used throughout the app for consistency and type safety.
 - `enum/`: Defines application-wide enumerations, such as user roles and news categories.  
 - `db/` : Establishes the connection to the MySQL database using configuration values from `.env`.
-- `dbStructure/` : Contains the SQL scripts or models that define the structure of the MySQL database (tables, relations, constraints). 
+- `dev_resources/` : Contains the SQL scripts or models that define the structure of the MySQL database (tables, relations, constraints) and includes Firebase migration scripts, experimental/tested functions before integration, and mock data used for unit testing and development validation.
 - `config.ts`: Holds global configuration (e.g., secret keys, database settings, API host).  
 - `services/`: Contains utility and service-level functions (e.g., for delay functions, external API calls, and URL transformations).
-- `tests/`: Includes Firebase migration scripts, experimental/tested functions before integration, and mock data used for unit testing and development validation.
-
 
 ---
 
@@ -196,14 +211,22 @@ Likes are stored per user-news pair and impact content ranking or visibility.
 
 # Introducción (Español)
 
-Desarrollé una **API RESTful** para la gestión de usuarios, noticias y autenticación utilizando **Node.js** como entorno de ejecución y **Express.js** como framework para la creación de rutas HTTP.  
+Desarrollé una **API RESTful** para la gestión de usuarios, noticias, comentarios y autenticación utilizando **Node.js** como entorno de ejecución y **Express.js** como framework para la creación de rutas HTTP.  
 La aplicación admite autenticación mediante **JWT (JSON Web Tokens)**, gestión de usuarios con roles específicos (como administradores) e interacción con noticias a través de operaciones **CRUD**.  
-Los usuarios pueden comentar, dar "like" e interactuar con las noticias. Además, se integró la **API de Google News** para obtener noticias de múltiples fuentes y mostrarlas en la plataforma.
+Los usuarios pueden comentar, dar "like" e interactuar con las noticias. Además, se integraron servicios de terceros para ampliar la funcionalidad de la plataforma:
+
+- **Google News API** para obtener noticias de diversas fuentes externas.
+
+- **API de Geolocalización** por IP para determinar la ubicación del usuario en función de su dirección IP.
+
+- **API de OpenWeather** para obtener información meteorológica según la ubicación del usuario.
 
 ---
 
-### **Tecnologías Utilizadas**:
+## **Tecnologías Utilizadas**:
 
+- **Bun**: Runtime moderno y rápido utilizado como reemplazo de Node/npm.
+- **TypeScript**: Superset de JavaScript que permite tipado estático y mayor robustez en el desarrollo.
 - **Node.js**: Entorno de ejecución JavaScript basado en el motor V8 de Chrome.
 - **Express.js**: Framework web para construir APIs RESTful.
 - **MySQL2**: Cliente de base de datos para MySQL, utilizado para almacenar usuarios, noticias y comentarios.
@@ -218,7 +241,7 @@ Los usuarios pueden comentar, dar "like" e interactuar con las noticias. Además
 
 ---
 
-### **Despliegue**
+## **Despliegue**
 
 - **Base de datos**: Alojada en Railway, que permite la creación y escalabilidad automática en la nube.
 - **Servidor**: Desplegado en Render, ofreciendo integración continua y escalabilidad para aplicaciones Node.js.
@@ -249,10 +272,13 @@ Asegúrate de tener instalado lo siguiente:
 2. **Accede al proyecto**:  
    `cd mi-proyecto`
 
-3. **Instala las dependencias**:  
+3. **Este proyecto utiliza Bun como runtime, por lo que se recomienda tenerlo instalado globalmente**:
+   `npm install -g bun`
+
+4. **Instala las dependencias**:  
    `bun install`
 
-4. **Crea y configura el archivo `.env` en la raíz del proyecto con las siguientes variables**:
+5. **Crea y configura el archivo `.env` en la raíz del proyecto con las siguientes variables**:
 
    ```env
    DB_HOST=localhost
@@ -260,13 +286,14 @@ Asegúrate de tener instalado lo siguiente:
    DB_PASSWORD=tu_contraseña
    DB_NAME=mi_base_de_datos
    DB_PORT=3306
-   API_KEY=tu_clave_api
-   API_HOST=host_de_la_api
+   DB_URL=url_publica_base_base_de_datos
    SECRET_KEY=clave_secreta
    SECRET_REFRESH_KEY=clave_refresh
-   SALT=10
+   PASSWORD=tu_contraseña
+   SALT=9
+   API_KEY=tu_clave_api
 
-5. **Inicia el servidor**:
+6. **Inicia el servidor**:
     `bun dev`
     El servidor correrá en: http://localhost:1234
 
@@ -344,32 +371,36 @@ Asegúrate de tener instalado lo siguiente:
 - `POST /auth/role`: Modificación de roles de usuario (solo administrador).
 
 ### `/user`
-- `GET /user`: Obtiene la información del usuario autenticado.  
-- `GET /user/getall`: Devuelve una lista de todos los usuarios (solo administrador).  
-- `PATCH /user/update`: Actualiza la información del perfil.  
+- `GET /user/me`: Obtiene la información del usuario autenticado.  
+- `GET /user/all`: Devuelve una lista de todos los usuarios (solo administrador).  
+- `PATCH /user/me`: Actualiza la información del perfil.  
 - `POST /user/delete`: Desactiva al usuario (soft delete).  
-- `DELETE /user/erase`: Elimina usuarios inactivos permanentemente (requiere rol administrador y contraseña adicional).  
+- `DELETE /user/clean`: Elimina usuarios inactivos permanentemente (requiere rol administrador y contraseña adicional).  
 - `GET /user/like/:id`: Verifica si el usuario dio "like" a una noticia.  
 - `POST /user/like/:id`: Agrega un "like" a una noticia.  
-- `DELETE /user/like/:id`: Elimina el "like" de una noticia.  
-- `POST /user/comment/:id`: Agrega un comentario a una noticia.  
-- `DELETE /user/comment/:id`: Elimina un comentario de una noticia.  
+- `DELETE /user/like/:id`: Elimina el "like" de una noticia.   
 - `GET /user/:id`: Obtiene la información de un usuario por ID (solo administrador).
 
 ### `/news`
 - `GET /news`: Obtiene todas las noticias.  
 - `GET /news/featured`: Obtiene las noticias destacadas.  
-- `POST /news/fetch`: Trae noticias desde una API externa (como Google News).  
-- `POST /news/:id`: Alterna la visibilidad de una noticia.  
-- `DELETE /news/clean`: Elimina noticias inactivas (solo administrador).  
-- `GET /news/inactive`: Muestra noticias no visibles (solo administrador).  
-- `GET /news/newsComment/:id`: Devuelve los comentarios de una noticia.  
-- `GET /news/replies/:id`: Devuelve las respuestas a un comentario.  
-- `GET /news/category/:category`: Filtra noticias por categoría.  
+- `GET /news/inactive`: Muestra noticias no visibles (solo administrador). 
+- `GET /news/category/:category`: Filtra noticias por categoría.
+- `POST /news/search`: Devuelve todas las noticias que contienen el texto ingresado en el título.
+- `POST /news/fetch`: Trae noticias desde una API externa (como Google News).
+- `DELETE /news/clean`: Elimina noticias inactivas (requiere rol administrador y contraseña adicional).
 - `GET /news/:id`: Obtiene una noticia por ID.
+- `POST /news/:id`: Alterna la visibilidad de una noticia. 
 
 ### `/comment`
-- *(Pendiente de implementación por un error de diseño inicial.)*
+- `GET /comment/replies/:id`: Obtiene las respuestas de un comentario.
+- `POST /comment/likes/batch`: Devuelve los likes de un conjunto de comentarios a partir de un arreglo de IDs.
+- `POST /comment/like/:id`: Agrega un like a un comentario.
+- `DELETE /comment/like/:id`: Elimina un like de un comentario.
+- `GET /comment/:id`: Obtiene los comentarios asociados a una noticia.
+- `POST /comment/:id`: Agrega un comentario o una respuesta relacionada con una noticia.
+- `PATCH /comment/:id`: Actualiza el contenido de un comentario.
+- `DELETE /comment/:id`: Elimina un comentario o una respuesta.
 
 ---
 

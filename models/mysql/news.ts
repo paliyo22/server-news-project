@@ -4,9 +4,21 @@ import type { Category } from "../../enum";
 import type { INewsModel } from "../../interfaces";
 import { validateOutputNews, type NewsImput, type NewsItem, type NewsOutput, type SubNewsItem } from "../../schemas";
 
-
+/**
+ * NewsModel provides methods for managing news records in the MySQL database.
+ * Includes CRUD operations, category and status management, subnews handling, 
+ * search, and validation logic.
+ *
+ * @implements {INewsModel}
+ */
 export class NewsModel implements INewsModel{
 
+  /**
+   * Retrieves the genre ID for a given category, creating it if it does not exist.
+   * @private
+   * @param {Category} category - The news category.
+   * @returns {Promise<number>} The genre ID.
+   */
   private async getOrCreateGenreId(category: Category): Promise<number> {
     const [genreRows] = await connection.query(
         'SELECT id FROM genre WHERE name = ?',
@@ -31,6 +43,15 @@ export class NewsModel implements INewsModel{
     return genreId;
   }
 
+  /**
+   * Inserts a news item into the database.
+   * @private
+   * @param {NewsItem} i - The news item to insert.
+   * @param {number} genreId - The genre ID.
+   * @param {string} uuid - The UUID for the news item.
+   * @param {any} conn - The database connection.
+   * @returns {Promise<void>}
+   */
   private async insertNewsItem(i: NewsItem, genreId: number, uuid: string, conn: any) {
     await conn.query(
       `INSERT IGNORE INTO news (
@@ -53,6 +74,15 @@ export class NewsModel implements INewsModel{
     );
   }
 
+  /**
+   * Inserts subnews items and their relationships into the database.
+   * @private
+   * @param {SubNewsItem[]} subnews - Array of subnews items.
+   * @param {number} genreId - The genre ID.
+   * @param {string} parentUuid - The UUID of the parent news item.
+   * @param {any} conn - The database connection.
+   * @returns {Promise<void>}
+   */
   private async insertSubnews(subnews: SubNewsItem[], genreId: number, parentUuid: string, conn: any) {
     let sonId;
     for (const e of subnews) {
@@ -93,6 +123,12 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Retrieves a paginated list of news.
+   * @param {number} limit - The maximum number of news to return.
+   * @param {number} offset - The offset for pagination.
+   * @returns {Promise<{ data: NewsOutput[], total: number }>} The news data and total count.
+   */
   async getNews(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number }> {
     
     const [rows] = await connection.query(
@@ -121,6 +157,11 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
 
+  /**
+   * Retrieves a list of featured news from the last month, ordered by likes.
+   * @param {number} limit - The maximum number of news to return.
+   * @returns {Promise<NewsOutput[]>} The featured news.
+   */
   async getFeatured(limit: number): Promise<NewsOutput[]> {
     
     const [rows] = await connection.query(
@@ -148,6 +189,11 @@ export class NewsModel implements INewsModel{
     return news;
   }
   
+  /**
+   * Retrieves a news item by its ID.
+   * @param {string} id - The UUID of the news item.
+   * @returns {Promise<NewsOutput>} The news item.
+   */
   async getById(id: string): Promise<NewsOutput> {
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(n.id) AS id, n.created AS timestamp, n.title, 
@@ -173,6 +219,11 @@ export class NewsModel implements INewsModel{
     return result.output as NewsOutput;
   }
 
+  /**
+   * Retrieves subnews for a given news item.
+   * @param {string} id - The UUID of the parent news item.
+   * @returns {Promise<NewsOutput[]>} The subnews items.
+   */
   async getSubnews(id:string): Promise<NewsOutput[]> {
 
     const [rows] = await connection.query(
@@ -201,6 +252,11 @@ export class NewsModel implements INewsModel{
     return news;
   }
 
+  /**
+   * Toggles the active status of a news item.
+   * @param {string} id - The UUID of the news item.
+   * @returns {Promise<boolean>} True if the status was updated, false otherwise.
+   */
   async setStatus(id: string): Promise<boolean> {
     const [result] = await connection.query(
         `UPDATE news SET is_active = (NOT is_active) WHERE id = UUID_TO_BIN(?);`, [id]
@@ -213,6 +269,10 @@ export class NewsModel implements INewsModel{
     return true;
   }
 
+  /**
+   * Deletes all inactive news items.
+   * @returns {Promise<number>} The number of deleted records.
+   */
   async clean(): Promise<number> {
     
     const [result] = await connection.query(
@@ -222,6 +282,12 @@ export class NewsModel implements INewsModel{
     return result.affectedRows;
   }
 
+  /**
+   * Checks if at least 10 days have passed since the last fetch date.
+   * Throws an error if not enough days have passed.
+   * @returns {Promise<void>}
+   * @throws {Error} If less than 10 days have passed since the last fetch.
+   */
   async checkFetchDate(): Promise<void> {
     const [rows] = await connection.query(
       `SELECT fecha FROM last_pull WHERE id = 1;`
@@ -245,6 +311,11 @@ export class NewsModel implements INewsModel{
     }  
   }
 
+  /**
+   * Updates the last fetch date to the current date and time.
+   * @returns {Promise<void>}
+   * @throws {Error} If the update fails.
+   */
   async updateFetchDate(): Promise<void> {
 
     const [rows] = await connection.query(
@@ -256,6 +327,13 @@ export class NewsModel implements INewsModel{
     } 
   }
   
+  /**
+   * Adds a list of news items and their subnews to the database within a transaction.
+   * @param {NewsImput} news - The news input data.
+   * @param {Category} category - The news category.
+   * @returns {Promise<void>}
+   * @throws {Error} On transaction failure.
+   */
   async addNewsList(news: NewsImput, category: Category): Promise<void> {
     const conn = await connection.getConnection();
     try {
@@ -304,6 +382,12 @@ export class NewsModel implements INewsModel{
     }
   }
 
+  /**
+   * Retrieves a paginated list of inactive news.
+   * @param {number} limit - The maximum number of news to return.
+   * @param {number} offset - The offset for pagination.
+   * @returns {Promise<{ data: NewsOutput[], total: number }>} The news data and total count.
+   */
   async getInactive(limit: number, offset: number): Promise<{ data: NewsOutput[], total: number }> {
     const [rows] = await connection.query(
       `SELECT bin_to_uuid(n.id) AS id, n.created AS timestamp, n.title, 
@@ -333,6 +417,13 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
 
+  /**
+   * Retrieves a paginated list of news by category.
+   * @param {number} limit - The maximum number of news to return.
+   * @param {number} offset - The offset for pagination.
+   * @param {Category} category - The news category.
+   * @returns {Promise<{ data: NewsOutput[], total: number }>} The news data and total count.
+   */
   async getByCategory(limit: number, offset: number, category: Category): Promise<{ data: NewsOutput[], total: number }> {
     const genreId = await this.getOrCreateGenreId(category);
 
@@ -371,6 +462,11 @@ export class NewsModel implements INewsModel{
     return {data, total};
   }
   
+  /**
+   * Searches for news items whose title contains the given string.
+   * @param {string} contain - The string to search for in news titles.
+   * @returns {Promise<NewsOutput[]>} The matching news items.
+   */
   async search(contain: string): Promise<NewsOutput[]> {
     const [rows] = await connection.query(
       `SELECT BIN_TO_UUID(n.id) AS id, n.created AS timestamp, n.title, 

@@ -156,6 +156,8 @@ async function checkMySQLConnection(): Promise<void> {
             ( 1, 'user'),
             ( 2, 'admin');`
     );
+
+    await connection.query(`INSERT INTO last_pull (id) VALUES (1);`);
  
     console.log('✅ Conected succesfully. ');
   } catch (error) {

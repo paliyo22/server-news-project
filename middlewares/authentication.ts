@@ -28,8 +28,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
         const decoded = verify(token, config.jwtSecret);
 
         if (typeof decoded !== "object" || decoded === null || !("id" in decoded)) {
-            res.status(403).json({ error: "Invalid or expired token" });
-            return;
+            throw new Error();
         }
 
         (req as any).user = decoded;

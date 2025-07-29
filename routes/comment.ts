@@ -3,6 +3,13 @@ import type { ICommentModel } from "../interfaces"
 import { CommentController } from "../controllers"
 import { authenticateToken } from "../middlewares"
 
+/**
+ * Creates and returns the comment routes for the Express application.
+ *
+ * @param {Object} params - The parameters object.
+ * @param {ICommentModel} params.commentModel - The comment model instance to be used by the controller.
+ * @returns {Router} The configured Express router for comment-related endpoints.
+ */
 export const commentRoutes = ({commentModel}: {commentModel: ICommentModel}): Router => {
     const commentRouter = Router()
     const commentController = new CommentController(commentModel)

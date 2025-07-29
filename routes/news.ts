@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { NewsController } from "../controllers"
-import type { INewsModel } from "../interfaces"
+import type { IAuthModel, INewsModel } from "../interfaces"
 import { authenticateToken, authorizeAdmin } from "../middlewares"
 
 /**
@@ -9,9 +9,12 @@ import { authenticateToken, authorizeAdmin } from "../middlewares"
  * @param {INewsModel} params.newsModel - The news model instance.
  * @returns {Router} Configured Express router for news.
  */
-export const newsRoutes = ({newsModel}: {newsModel: INewsModel}): Router => {
+export const newsRoutes = (
+    {newsModel}: {newsModel: INewsModel},
+    {authModel}: {authModel: IAuthModel}
+): Router => {
     const newsRouter = Router();
-    const newsController = new NewsController(newsModel);
+    const newsController = new NewsController(newsModel, authModel);
 
     newsRouter.get('/', newsController.home);
     newsRouter.get('/featured', newsController.featuredNews);

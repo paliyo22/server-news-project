@@ -58,6 +58,11 @@ const welcomeSchema = object({
 
 export type WeatherData = InferInput<typeof welcomeSchema>;
 
+/**
+ * Validates the Weather input.
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<WeatherData>} The validation result.
+ */
 export const validateWeatherData = (input: unknown) => {
     return safeParse(welcomeSchema, input);
 }

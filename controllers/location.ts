@@ -1,8 +1,22 @@
 import type { Request, Response } from 'express';
 import { getClientIp, apiLocationData, apiWeatherData } from '../services';
 
+/**
+ * Controller for handling location and weather-related operations.
+ *
+ * @class LocationController
+ */
 export class LocationController {
 
+    /**
+     * Retrieves the client's location based on their IP address.
+     * Responds with the location data or an error message.
+     *
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getLocation = async (req: Request, res: Response): Promise<void> => {
         const ip = getClientIp(req);
 
@@ -23,6 +37,15 @@ export class LocationController {
         }
     };
 
+    /**
+     * Retrieves weather information for the specified latitude, longitude, and language.
+     * Responds with the weather data or an error message.
+     *
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getWeather = async(req: Request, res: Response): Promise<void> => {
         const {latitude, longitude, lang} = req.query;
 

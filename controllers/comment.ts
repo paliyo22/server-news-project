@@ -1,10 +1,28 @@
 import type { ICommentModel } from "../interfaces";
 import type { Request, Response } from 'express';
 
+/**
+ * Controller for handling comment-related operations such as retrieving, adding, updating,
+ * deleting comments, and managing likes and replies.
+ *
+ * @class CommentController
+ * @param {ICommentModel} commentModel - The comment model instance used for data operations.
+ */
 export class CommentController {
 
+    /**
+     * Creates an instance of CommentController.
+     * @param {ICommentModel} commentModel - The comment model instance.
+     */
     constructor(private readonly commentModel: ICommentModel){}
 
+    /**
+     * Retrieves comments for a specific news item.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getComment = async (req: Request, res: Response): Promise<void> => {
 
         const id = req.params.id;
@@ -26,6 +44,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Retrieves replies for a specific comment.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getReplies = async (req: Request, res: Response): Promise<void> => {
 
         const commentId = req.params.id;
@@ -52,6 +77,13 @@ export class CommentController {
         }   
     }
 
+    /**
+     * Adds a new comment or reply to a news item.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     addComment = async (req: Request, res: Response): Promise<void> => {
 
         const token = (req as any).user;
@@ -82,6 +114,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Deletes a comment if it belongs to the authenticated user.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     deleteComment = async (req: Request, res: Response): Promise<void> => {
 
         const token = (req as any).user;
@@ -103,6 +142,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Updates the content of a comment if it belongs to the authenticated user.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     update = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -127,6 +173,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Adds a like to a comment by the authenticated user.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     addLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -152,6 +205,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Removes a like from a comment by the authenticated user.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     deleteLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const commentId = req.params.id;
@@ -177,6 +237,13 @@ export class CommentController {
         }
     }
 
+    /**
+     * Retrieves likes for a batch of comments.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getLikes = async (req: Request, res: Response): Promise<void> => {
         const comments: string[] = req.body.comments;
         

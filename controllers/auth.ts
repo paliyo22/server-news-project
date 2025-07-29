@@ -6,10 +6,28 @@ import config from "../config";
 import { Role } from "../enum";
 import { getUserById, logOut } from "../services";
 
+/**
+ * Controller for handling authentication-related operations such as registration, login, logout,
+ * token refresh, password change, and role management.
+ *
+ * @class AuthController
+ * @param {IAuthModel} authModel - The authentication model instance used for data operations.
+ */
 export class AuthController {
     
+    /**
+     * Creates an instance of AuthController.
+     * @param {IAuthModel} authModel - The authentication model instance.
+     */
     constructor(private readonly authModel: IAuthModel) {}
 
+    /**
+     * Handles successful authentication by generating and setting access and refresh tokens as cookies.
+     * @private
+     * @param {UserOutput} user - The authenticated user.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     private async handleAuthSuccess(user: UserOutput, res: Response): Promise<void> {
         const jwtAccessExpiry = '15m';
         const jwtAccessExpiryMs = 15 * 60 * 1000;
@@ -46,6 +64,14 @@ export class AuthController {
             .json({ username: user.username, role: user.role });
     }
 
+    /**
+     * Registers a new user.
+     * Validates the input, creates the user, and logs them in by setting tokens.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     register = async (req: Request, res: Response): Promise<void> => {
         try {
             const result = validateUser(req.body);
@@ -80,6 +106,14 @@ export class AuthController {
         }
     }
 
+    /**
+     * Logs in a user.
+     * Validates credentials, activates the user if needed, and sets tokens.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     logIn = async (req: Request, res: Response): Promise<void> => {
         const result = validateAuth(req.body);
 
@@ -114,6 +148,13 @@ export class AuthController {
         }
     }
 
+    /**
+     * Logs out a user by revoking their refresh token and clearing authentication cookies.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     logOut = async (req: Request, res: Response): Promise<void> => {
         try{
             await logOut(req, res, this.authModel);
@@ -123,6 +164,13 @@ export class AuthController {
         }
     }
 
+    /**
+     * Refreshes the user's session by issuing new access and refresh tokens.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     refresh = async (req: Request, res: Response): Promise<void> => {
         const oldRefreshToken = (req as any).user
 
@@ -134,14 +182,14 @@ export class AuthController {
                     res.clearCookie('accessToken', {
                         httpOnly: true,
                         secure: process.env.NODE_ENV === 'production',
-                        sameSite: 'strict'
+                        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
                     });    
                 }
 
                 res.clearCookie('refreshToken', {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict'
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
                 });
 
                 res.status(403).json({ error: 'User not found or invalid refresh token' });
@@ -165,6 +213,14 @@ export class AuthController {
         }
     }
 
+    /**
+     * Changes the user's password.
+     * Validates the old and new passwords and updates them in the database.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     newPassword = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user
         const {oldPass, newPass} = req.body;
@@ -191,6 +247,14 @@ export class AuthController {
         }
     }
     
+    /**
+     * Updates the user's role.
+     * Validates the role and user ID, then updates the user's role in the database.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     newRole = async (req: Request, res: Response): Promise<void> => {
         const {id, role} = req.body;
         if(!Object.values(Role).includes(role) || typeof id !== 'string' || id.trim() === ""){

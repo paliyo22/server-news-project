@@ -5,13 +5,34 @@ import type { IUserModel, IAuthModel } from '../interfaces';
 import  { getUserById, logOut } from '../services';
 import { Role } from '../enum';
 
+/**
+ * Controller for handling user-related operations such as retrieving, updating,
+ * deleting users, managing likes, and cleaning inactive users.
+ *
+ * @class UserController
+ * @param {IUserModel} userModel - The user model instance used for user data operations.
+ * @param {IAuthModel} authModel - The authentication model instance used for authentication operations.
+ */
 export class UserController {
 
+    /**
+     * Creates an instance of UserController.
+     * @param {IUserModel} userModel - The user model instance.
+     * @param {IAuthModel} authModel - The authentication model instance.
+     */
     constructor(
         private readonly userModel: IUserModel,
         private readonly authModel: IAuthModel
     ) {}
 
+    /**
+     * Retrieves a user by their ID. If the requester is an admin, allows fetching any user by ID.
+     * Otherwise, returns the authenticated user's data.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getById = async (req: Request, res: Response): Promise<void> => { 
         let id;
 
@@ -40,6 +61,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Retrieves a paginated list of all users.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getAll = async (req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
         if(limit<0){
@@ -63,6 +91,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Updates the authenticated user's information with the provided fields.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     update = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const result = validatePartialUser(req.body);
@@ -83,6 +118,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Deletes all inactive users after verifying the provided password.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     clean = async (req: Request, res: Response): Promise<void> => {
         const password = req.body?.password;
 
@@ -110,6 +152,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Adds a like from the authenticated user to a news item.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     saveLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -133,6 +182,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Removes a like from the authenticated user for a news item.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     deleteLike = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -156,6 +212,13 @@ export class UserController {
         }
     }
 
+    /**
+     * Checks if the authenticated user has liked a specific news item.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     isLiked = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const newsId = req.params.id;
@@ -174,6 +237,14 @@ export class UserController {
         }
     }
 
+    /**
+     * Deletes a user account. If the requester is an admin and provides an ID, deletes that user.
+     * Otherwise, deletes the authenticated user's account.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     deleteUser = async (req: Request, res: Response): Promise<void> => {
         const token = (req as any).user;
         const id = req.body?.id

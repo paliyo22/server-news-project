@@ -1,8 +1,8 @@
 import express, { json } from "express";
 import config from "./config.ts";
-import { authRoutes, commentRoutes, locationRoutes, newsRoutes, userRoutes } from "./routes/index.ts";
-import { AuthModel, CommentModel, NewsModel, UserModel } from "./models/mysql/index.ts";
-import { corsMiddleware } from "./middlewares/cors.ts";
+import { authRoutes, commentRoutes, locationRoutes, newsRoutes, userRoutes } from "./routes";
+import { AuthModel, CommentModel, NewsModel, UserModel } from "./models/mysql";
+import { corsMiddleware } from "./middlewares";
 import cookieParser from 'cookie-parser';
 
 const app = express();
@@ -30,7 +30,7 @@ app.use(cookieParser());
 app.disable('x-powered-by');
 
 /**
- * Registers routes for user, news, and authentication functionalities.
+ * Registers routes for user, news, comments, location and authentication functionalities.
  * 
  * @param {object} commentModel - An instance of the CommentModel.
  * @param {object} userModel - An instance of the UserModel.
@@ -39,7 +39,7 @@ app.disable('x-powered-by');
  */
 app.use('/comment', commentRoutes({ commentModel: new CommentModel }));
 app.use('/user', userRoutes({ userModel: new UserModel}, { authModel: new AuthModel}));
-app.use('/news', newsRoutes({ newsModel: new NewsModel}));
+app.use('/news', newsRoutes({ newsModel: new NewsModel}, { authModel: new AuthModel}));
 app.use('/auth', authRoutes({ authModel: new AuthModel}));
 app.use('/location', locationRoutes());
 

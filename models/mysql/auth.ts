@@ -1,6 +1,6 @@
 import { compare, hash } from "bcrypt";
 import { connection } from "../../db/mysql";
-import { Role } from "../../enum/role";
+import { Role } from "../../enum";
 import type { IAuthModel } from "../../interfaces";
 import { validateUserOutput, type AuthInput, type UserInput, type UserOutput } from "../../schemas";
 import { config } from "../../config";

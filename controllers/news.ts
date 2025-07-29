@@ -1,13 +1,35 @@
 import type { Request, Response } from 'express';
-import type { INewsModel } from '../interfaces';
+import type { IAuthModel, INewsModel } from '../interfaces';
 import config from '../config';
 import { Category, isCategory } from '../enum';
-import { apiData, delay, saveUrlImage } from '../services';
+import { apiData, delay, logOut, saveUrlImage } from '../services';
 
+/**
+ * Controller for handling news-related operations such as retrieving, searching, updating,
+ * and importing news articles.
+ *
+ * @class NewsController
+ * @param {INewsModel} newsModel - The news model instance used for data operations.
+ */
 export class NewsController {
 
-    constructor(private readonly newsModel: INewsModel) {}
+    /**
+     * Creates an instance of NewsController.
+     * @param {INewsModel} newsModel - The news model instance.
+     * @param {IAuthModel} authModel - The authentication model instance.
+     */
+    constructor(
+        private readonly newsModel: INewsModel,
+        private readonly authModel: IAuthModel
+    ) {}
     
+    /**
+     * Retrieves a paginated list of news articles.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     home = async (req: Request, res: Response): Promise<void> => {
         
         let limit = parseInt(req.query.limit as string) || 10;
@@ -33,6 +55,13 @@ export class NewsController {
         }
     }
 
+    /**
+     * Retrieves a list of featured news articles from the last month, ordered by likes.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     featuredNews = async (req: Request, res: Response): Promise<void> => {
 
             let limit = parseInt(req.query.limit as string) || config.FeaturedLimit;
@@ -53,6 +82,13 @@ export class NewsController {
         }
     }
 
+    /**
+     * Retrieves a news article by its ID, including subnews if available.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getById = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
 
@@ -80,6 +116,14 @@ export class NewsController {
         }
     }
     
+    /**
+     * Fetches news articles from an external API for all categories and saves them to the database.
+     * Also updates the fetch date and handles rate limiting.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     fetchApi = async (req: Request, res: Response): Promise<void> => {
         try{
             let aux = 0;
@@ -103,6 +147,13 @@ export class NewsController {
         }
     }
 
+    /**
+     * Toggles the active status of a news article by its ID.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     changeStatus = async (req: Request, res: Response): Promise<void> => {
         const id = req.params.id;
 
@@ -129,6 +180,13 @@ export class NewsController {
         }
     }
     
+    /**
+     * Deletes all inactive news articles after verifying the provided password.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     clean = async (req: Request, res: Response): Promise<void> => {
         const password = req.body?.password;
 
@@ -138,6 +196,7 @@ export class NewsController {
         }
         try {
             if(password !== config.Password){
+                await logOut(req, res, this.authModel);
                 res.status(401).json({ error: 'Verification failed.' });
                 return;
             }
@@ -153,6 +212,13 @@ export class NewsController {
         }
     }
    
+    /**
+     * Retrieves a paginated list of inactive news articles.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getInactive = async(req: Request, res: Response): Promise<void> => {
         let limit = parseInt(req.query.limit as string) || 10;
         let offset = parseInt(req.query.offset as string) || 0;
@@ -178,6 +244,13 @@ export class NewsController {
         }
     }
 
+    /**
+     * Retrieves a paginated list of news articles by category.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     getCategory = async (req: Request, res: Response): Promise<void> => {
         const category = req.params.category;
         let limit = parseInt(req.query.limit as string) || 10;
@@ -209,6 +282,13 @@ export class NewsController {
         }
     }  
 
+    /**
+     * Searches for news articles whose title contains the given string.
+     * @function
+     * @param {Request} req - The Express request object.
+     * @param {Response} res - The Express response object.
+     * @returns {Promise<void>}
+     */
     search = async (req: Request, res: Response): Promise<void> => {
         const contain = req.body.contain;
 

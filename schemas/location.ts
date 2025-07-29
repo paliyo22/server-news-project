@@ -46,6 +46,11 @@ const welcomeSchema = object({
 
 export type LocationData = InferInput<typeof welcomeSchema>;
 
+/**
+ * Validates the Location input.
+ * @param {unknown} input - The input data to validate.
+ * @returns {import("valibot").SafeParseReturn<LocationData>} The validation result.
+ */
 export const validateLocationData = (input: unknown) => {
     return safeParse(welcomeSchema, input);
 }
