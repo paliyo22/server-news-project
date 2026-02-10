@@ -22,6 +22,7 @@ export const fetchNews = async (newsModel: INewsModel) => {
             aux +=  news.items.length;
             await delay(1000);
         }
+        console.log('All news has been updated.');
         await newsModel.updateFetchDate();
     } catch (error) {
         if(error instanceof Error){

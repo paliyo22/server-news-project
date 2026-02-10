@@ -135,6 +135,7 @@ export class NewsController {
             }else{
                 res.sendStatus(204);
             } 
+            console.log("Anda bien el fetch Api");
         }catch(e){
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });
