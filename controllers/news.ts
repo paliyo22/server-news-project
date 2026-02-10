@@ -119,15 +119,18 @@ export class NewsController {
     /**
      * Fetches news articles from an external API for all categories and saves them to the database.
      * Also updates the fetch date and handles rate limiting.
+     * Executes the fetch in the background without blocking the response.
      * @function
+     * @param {Request} req - The Express request object.
      * @param {Response} res - The Express response object.
      * @returns {Promise<void>}
      */
-    fetchApi = async (res: Response): Promise<void> => {
+    fetchApi = async (req: Request, res: Response): Promise<void> => {
         try{
             const result = await this.newsModel.checkFetchDate();
             if(result && !isFetching){
                 res.sendStatus(204);
+                // Execute in background without awaiting
                 tryFetch(this.newsModel);
             }else{
                 res.sendStatus(204);
