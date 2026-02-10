@@ -30,9 +30,10 @@ export const apiData = async (category: string): Promise<NewsImput> => {
     }
     const newsArray = validateApiNews(response.data);
     if(!newsArray.success){
-        throw new Error("Validation error");
+        console.log('validateApiNews failed:', newsArray.issues);
+        throw new Error("Validation error: " + JSON.stringify(newsArray.issues));
     }
-        
+
     return newsArray.output;    
 }
 

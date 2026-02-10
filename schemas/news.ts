@@ -8,7 +8,7 @@ const imagesSchema = object({
 })
 
 const subNewsSchema = object({
-    timestamp: union([string(), date()]),
+    timestamp: union([string(), number(), date()]),
     title: string(),
     snippet: string(),
     images: optional(nullable(imagesSchema)),
