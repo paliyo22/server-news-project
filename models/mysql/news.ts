@@ -288,7 +288,7 @@ export class NewsModel implements INewsModel{
    * @returns {Promise<void>}
    * @throws {Error} If less than 10 days have passed since the last fetch.
    */
-  async checkFetchDate(): Promise<void> {
+  async checkFetchDate(): Promise<boolean> {
     const [rows] = await connection.query(
       `SELECT fecha FROM last_pull WHERE id = 1;`
     ) as [any[], any];
@@ -307,8 +307,10 @@ export class NewsModel implements INewsModel{
 
     if (diffDays < 10) {
       const daysRemaining = Math.ceil(10 - diffDays);
-      throw new Error(`Can't do that for another ${daysRemaining} days`);
+      return false;
     }  
+    
+    return true
   }
 
   /**

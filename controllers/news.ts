@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import type { IAuthModel, INewsModel } from '../interfaces';
 import config from '../config';
-import { Category, isCategory } from '../enum';
-import { apiData, delay, logOut, saveUrlImage } from '../services';
+import { isCategory } from '../enum';
+import { logOut, isFetching, tryFetch} from '../services';
 
 /**
  * Controller for handling news-related operations such as retrieving, searching, updating,
@@ -114,30 +114,24 @@ export class NewsController {
                 res.status(500).json({ error: "Internal Server Error" });
             }
         }
-    }
+    };
     
     /**
      * Fetches news articles from an external API for all categories and saves them to the database.
      * Also updates the fetch date and handles rate limiting.
      * @function
-     * @param {Request} req - The Express request object.
      * @param {Response} res - The Express response object.
      * @returns {Promise<void>}
      */
-    fetchApi = async (req: Request, res: Response): Promise<void> => {
+    fetchApi = async (res: Response): Promise<void> => {
         try{
-            let aux = 0;
-            await this.newsModel.checkFetchDate(); //se puede mejorar ya que no es 500
-            for(const category of Object.values(Category)) {
-                
-                const newsArray = await apiData(category); //service
-                const news = await saveUrlImage(newsArray); //service
-                await this.newsModel.addNewsList(news, category);
-                aux +=  news.items.length;
-                await delay(1000);
-            }
-            await this.newsModel.updateFetchDate();
-            res.status(200).json({ succes: `${aux} news successfully save` }) 
+            const result = await this.newsModel.checkFetchDate();
+            if(result && !isFetching){
+                res.sendStatus(204);
+                tryFetch(this.newsModel);
+            }else{
+                res.sendStatus(204);
+            } 
         }catch(e){
             if (e instanceof Error) {
                 res.status(500).json({ error: e.message });

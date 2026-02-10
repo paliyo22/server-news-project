@@ -22,7 +22,7 @@ export const newsRoutes = (
     newsRouter.get('/category/:category', newsController.getCategory);
     
     newsRouter.post('/search', newsController.search);
-    newsRouter.post('/fetch', authenticateToken, authorizeAdmin, newsController.fetchApi);
+    newsRouter.post('/fetch', newsController.fetchApi);
     
     newsRouter.delete('/clean', authenticateToken, authorizeAdmin, newsController.clean);
 
