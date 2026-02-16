@@ -477,9 +477,9 @@ export class NewsModel implements INewsModel{
       FROM news n
       LEFT JOIN genre g ON g.id = n.news_genre
       LEFT JOIN likes_x_news l ON l.news_id = n.id
-      WHERE title LIKE ?
+      WHERE title LIKE ? OR snippet LIKE ?
       GROUP BY n.id
-      ORDER BY n.created DESC;`, [`%${contain}%`]
+      ORDER BY n.created DESC;`, [`%${contain}%`, `%${contain}%`]
     ) as [any[], any];
 
     if (rows.length === 0) {
