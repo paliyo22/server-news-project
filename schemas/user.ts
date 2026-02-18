@@ -1,5 +1,5 @@
 import { 
-    boolean, date, email, enum_, maxValue, minLength, nullable, 
+    boolean, date, email, enum_, minLength, nullable, 
     object, optional, partial, pipe, safeParse, string, 
     toMaxValue, union, uuid, type InferInput 
 } from "valibot";
@@ -15,7 +15,7 @@ const userSchema = object({
     username: pipe(string(), minLength(4)),
     subscription: optional(boolean()),
     email: emailSchema,
-    created: optional(pipe(date(), maxValue(new Date()))),
+    created: optional(date()),
     role: enum_(Role),
     is_active: optional(boolean()),
 })
