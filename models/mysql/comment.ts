@@ -54,7 +54,8 @@ export class CommentModel implements ICommentModel {
             FROM comment c
             LEFT JOIN likes_x_comment l ON l.comment_id = c.id
             LEFT JOIN user u ON c.user_id = u.id
-            WHERE c.parent_comment_id = UUID_TO_BIN(?)
+            WHERE (c.parent_comment_id = UUID_TO_BIN(?))
+            AND (c.is_active IS TRUE)
             GROUP BY c.id
             ORDER BY created;`,[commentId]
         ) as [any[], any];
@@ -165,7 +166,8 @@ export class CommentModel implements ICommentModel {
             `SELECT BIN_TO_UUID(l.comment_id) AS comment_id, u.username
             FROM likes_x_comment l
             LEFT JOIN user u ON l.user_id = u.id
-            WHERE l.comment_id IN (${placeholders})`,
+            WHERE l.comment_id IN (${placeholders})
+            AND (u.is_active IS TRUE)`,
             binaryIds
         ) as [any[], any];
 
