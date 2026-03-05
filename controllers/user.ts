@@ -50,6 +50,7 @@ export class UserController {
             const user = await getUserById(id, this.authModel)
             if(!user){
                 res.status(400).json({ error: 'Invalid user'})
+                return;
             }
             res.status(200).json({ user });
         } catch (e) {
