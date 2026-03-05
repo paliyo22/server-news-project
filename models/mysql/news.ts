@@ -290,16 +290,15 @@ export class NewsModel implements INewsModel{
    */
   async checkFetchDate(): Promise<boolean> {
     const [rows] = await connection.query(
-      `SELECT fecha FROM last_pull WHERE id = 1;`
+      `SELECT UNIX_TIMESTAMP(fecha) as timestamp FROM last_pull WHERE id = 1;`
     ) as [any[], any];
 
     if (!rows.length) {
       throw new Error("Failed to retrieve date");
     }
 
-    const lastPullDate = rows[0].fecha instanceof Date
-      ? rows[0].fecha
-      : new Date(rows[0].fecha);
+    const lastPullTimestamp = rows[0].timestamp; // seconds since epoch
+    const lastPullDate = new Date(lastPullTimestamp * 1000); // convert to milliseconds
 
     const now = new Date();
     const diffMs = now.getTime() - lastPullDate.getTime();
