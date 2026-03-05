@@ -28,7 +28,7 @@ export const connection = mysql.createPool({  // production
   uri: config.DBUrl,
   waitForConnections: true,
   connectionLimit: 4,
-  queueLimit: 5,
+  queueLimit: 10,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   timezone: 'Z'

@@ -122,6 +122,7 @@ export class UserModel implements IUserModel{
       u.created
       FROM user u
       LEFT JOIN role r on r.id = u.user_role
+      WHERE r.name != admin
       ORDER BY u.lastname, u.user_name 
       LIMIT ? OFFSET ?;`,[limit, offset]
       ) as [any[], any];
