@@ -254,6 +254,7 @@ export class UserController {
                 await this.userModel.delete(id);
             }else{
                 await this.userModel.delete(token.id);
+                await logOut(req, res, this.authModel);
             }                      
             res.status(200).json({ message: 'The acount was deleted' });
         } catch (e) {
