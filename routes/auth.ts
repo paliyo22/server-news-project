@@ -19,6 +19,6 @@ export const authRoutes = ({authModel}: {authModel: IAuthModel}): Router => {
     authRouter.post('/refresh', refreshToken, authCotroller.refresh)
     authRouter.post('/password', authenticateToken, authCotroller.newPassword)
     authRouter.post('/role', authenticateToken, authorizeAdmin, authCotroller.newRole)
-   
+    authRouter.post('/restore', authenticateToken, authorizeAdmin, authCotroller.restoreAccount)
     return authRouter
 }

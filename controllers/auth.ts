@@ -273,6 +273,21 @@ export class AuthController {
         }
     }
 
+    restoreAccount = async (req: Request, res: Response): Promise<void> => {
+        const id = req.body?.id
+        
+        try {
+            await this.authModel.activate(id);                    
+            res.status(200).json({ message: 'The acount is restored' });
+        } catch (e) {
+            if (e instanceof Error) {
+                res.status(500).json({ error: e.message });
+            } else {
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        }
+    }
+
 }
 
 
